@@ -1,10 +1,12 @@
 /*
  * Progress persistence — pure functions over an injected storage.
- * Task 5 will move `Cluster` into utils/cluster.ts; it lives here until then.
+ * `Cluster` is defined in utils/cluster.ts and re-exported here so existing
+ * imports keep working.
  */
 
-// TODO(task-5): re-export from utils/cluster.ts once it exists.
-export type Cluster = 'mainnet-beta' | 'devnet'
+import type { Cluster } from './cluster'
+
+export type { Cluster } from './cluster'
 
 export type ChallengeId = 'transfer' | 'swap' | 'stake' | 'memecoin'
 
