@@ -10,6 +10,14 @@
   --color-accent: #E8A33D;
   --color-secondary: #6B4E71;
 
+  /* Status colors — deep tones chosen to keep AA contrast on cream.
+     Never put light text on --color-accent (2.02:1); accent takes --color-ink. */
+  --color-surface: #FFFFFF;
+  --color-success: #1B5E20;      /* 7.4:1 on --color-bg */
+  --color-info-bg: #F1EAF3;
+  --color-warning-bg: #FCF0DA;
+  --color-success-bg: #E7F0E8;
+
   /* Typography */
   --font-body: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
