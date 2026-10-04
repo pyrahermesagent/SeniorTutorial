@@ -118,15 +118,48 @@ describe('classifySendError', () => {
     expect(classifySendError(signAndSendError)).toBe('rejected')
   })
 
-  it('maps user-rejection and cancellation names to rejected', () => {
+  it('maps user-rejection names to rejected', () => {
     const rejected = new Error('no')
     rejected.name = 'UserRejectedRequestError'
     expect(classifySendError(rejected)).toBe('rejected')
-
-    const cancelled = new Error('no')
-    cancelled.name = 'SolanaMobileWalletAdapterError: ERROR_ASSOCIATION_CANCELLED'
-    expect(classifySendError(cancelled)).toBe('rejected')
   })
+
+  // Fixtures below mirror the real error classes in
+  // @solana-mobile/mobile-wallet-adapter-protocol (lib/esm/index.browser.js):
+  // both set `name` to the class name; the adapter error carries a string
+  // constant code, the protocol error a numeric one.
+  function mwaError(code: string): Error & { code: string } {
+    return Object.assign(new Error('cancelled'), {
+      name: 'SolanaMobileWalletAdapterError',
+      code,
+    })
+  }
+
+  function mwaProtocolError(code: number): Error & { code: number } {
+    return Object.assign(new Error('protocol error'), {
+      name: 'SolanaMobileWalletAdapterProtocolError',
+      code,
+    })
+  }
+
+  it('maps a real MWA association cancellation to rejected', () => {
+    expect(classifySendError(mwaError('ERROR_ASSOCIATION_CANCELLED'))).toBe('rejected')
+  })
+
+  it('maps an MWA authorization decline (protocol code -1) to rejected', () => {
+    expect(classifySendError(mwaProtocolError(-1))).toBe('rejected')
+  })
+
+  it.each([-2, -3, -4, -5, -100])('maps MWA protocol code %i to failed', (code) => {
+    expect(classifySendError(mwaProtocolError(code))).toBe('failed')
+  })
+
+  it.each(['ERROR_SESSION_CLOSED', 'ERROR_WALLET_NOT_FOUND', 'ERROR_SESSION_TIMEOUT'])(
+    'maps non-cancellation MWA code %s to failed',
+    (code) => {
+      expect(classifySendError(mwaError(code))).toBe('failed')
+    },
+  )
 
   it('maps a generic error to failed', () => {
     expect(classifySendError(new Error('network down'))).toBe('failed')

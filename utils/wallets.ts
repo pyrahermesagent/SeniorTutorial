@@ -36,16 +36,25 @@ export function shortenAddress(addr: string, edgeChars = 4): string {
 }
 
 const USER_REJECTED_REQUEST_CODE = 4001
-// wallet-standard errors (WalletSignTransactionError & friends), EIP-1193
-// user-rejection errors, and MWA cancellation all name themselves; match by
-// name because the error classes live in wallet-side packages we don't import.
+// SolanaMobileWalletAdapterProtocolError: ERROR_AUTHORIZATION_FAILED is how
+// MWA reports the user declining authorization in the wallet sheet.
+const MWA_PROTOCOL_ERROR_NAME = 'SolanaMobileWalletAdapterProtocolError'
+const MWA_AUTHORIZATION_FAILED_CODE = -1
+// wallet-standard errors (WalletSignTransactionError & friends) and EIP-1193
+// user-rejection errors name themselves; match by name because the error
+// classes live in wallet-side packages we don't import.
 const REJECTION_NAME = /reject|declined|cancelled|canceled|wallet\w*(sign|send)\w*error/i
+// MWA adapter errors carry string constant codes (ERROR_ASSOCIATION_CANCELLED
+// is the user cancelling the wallet sheet); their name is just the class name.
+const REJECTION_CODE = /cancelled|canceled|reject/i
 
 /** Distinguish "the user said no" from real failures so the UI can stay calm. */
 export function classifySendError(error: unknown): 'rejected' | 'failed' {
   if (typeof error !== 'object' || error === null) return 'failed'
   const { code, name } = error as { code?: unknown; name?: unknown }
   if (code === USER_REJECTED_REQUEST_CODE) return 'rejected'
+  if (typeof code === 'string' && REJECTION_CODE.test(code)) return 'rejected'
+  if (name === MWA_PROTOCOL_ERROR_NAME && code === MWA_AUTHORIZATION_FAILED_CODE) return 'rejected'
   if (typeof name === 'string' && REJECTION_NAME.test(name)) return 'rejected'
   return 'failed'
 }
