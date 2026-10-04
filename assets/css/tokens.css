@@ -1,0 +1,36 @@
+/*
+ * Design tokens for the senior-first Solana tutorial.
+ * Every component consumes these custom properties — do not rename.
+ * Base: html font-size is 20px, so 1rem = 20px.
+ */
+:root {
+  /* Palette */
+  --color-bg: #FBF7EF;
+  --color-ink: #123B3C;
+  --color-accent: #E8A33D;
+  --color-secondary: #6B4E71;
+
+  /* Typography */
+  --font-body: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Type scale: 20 / 24 / 28 / 36 / 44 px (20px is the minimum anywhere) */
+  --text-base: 1rem;    /* 20px — body text */
+  --text-lg: 1.2rem;    /* 24px — lead paragraphs, h3 */
+  --text-xl: 1.4rem;    /* 28px — h2 */
+  --text-2xl: 1.8rem;   /* 36px — h1 sections */
+  --text-3xl: 2.2rem;   /* 44px — page titles */
+
+  /* Spacing scale (generous, touch-friendly) */
+  --space-1: 0.4rem;    /* 8px */
+  --space-2: 0.8rem;    /* 16px */
+  --space-3: 1.2rem;    /* 24px */
+  --space-4: 1.6rem;    /* 32px */
+  --space-5: 2.4rem;    /* 48px */
+  --space-6: 3.2rem;    /* 64px */
+
+  /* Focus ring — high-contrast ink on cream, thick and offset */
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 3px;
+  --focus-ring-color: var(--color-ink);
+  --focus-ring: var(--focus-ring-width) solid var(--focus-ring-color);
+}
