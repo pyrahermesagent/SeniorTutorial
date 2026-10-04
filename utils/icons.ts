@@ -1,6 +1,7 @@
 import type { FunctionalComponent } from 'vue'
 import {
   ArrowRight,
+  BookOpen,
   Check,
   ChevronDown,
   CircleCheck,
@@ -11,7 +12,9 @@ import {
   LoaderCircle,
   LogOut,
   Menu,
+  Rocket,
   TriangleAlert,
+  Trophy,
   Wallet,
   X,
 } from 'lucide-vue-next'
@@ -35,4 +38,7 @@ export const iconMap: Record<string, FunctionalComponent> = {
   'log-out': LogOut,
   'chevron-down': ChevronDown,
   'external-link': ExternalLink,
+  rocket: Rocket,
+  trophy: Trophy,
+  'book-open': BookOpen,
 }
