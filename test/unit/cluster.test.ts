@@ -201,6 +201,26 @@ describe('useSolana', () => {
     })
   })
 
+  it('maps a JSON-RPC -32002 error body to rate-limited', async () => {
+    vi.stubGlobal('fetch', async (_url: string, init: { body: string }) => {
+      const payload = JSON.parse(init.body)
+      const body = JSON.stringify({
+        jsonrpc: '2.0',
+        id: payload.id,
+        error: {
+          code: -32002,
+          message:
+            'airdrop request failed. This can happen when the rate limit is reached.',
+        },
+      })
+      return { ok: true, status: 200, statusText: 'OK', headers: new Headers(), text: async () => body }
+    })
+    const { requestDevnetAirdrop } = useSolana()
+    await expect(requestDevnetAirdrop(GOOD_ADDRESS, 1)).resolves.toEqual({
+      error: 'rate-limited',
+    })
+  })
+
   it('maps other HTTP failures to unavailable', async () => {
     stubRpcFetch(() => ({ ok: false, status: 500, statusText: 'Internal Server Error' }))
     const { requestDevnetAirdrop } = useSolana()

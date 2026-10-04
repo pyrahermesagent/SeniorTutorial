@@ -1,4 +1,5 @@
 import {
+  SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
   SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR,
   address as toAddress,
   appendTransactionMessageInstructions,
@@ -24,7 +25,7 @@ import {
 } from '@solana/kit'
 import { computed } from 'vue'
 import { useProgress } from './useProgress'
-import { CLUSTERS, parseSolToLamports, type Cluster } from '../utils/cluster'
+import { CLUSTERS, isValidSolanaAddress, parseSolToLamports, type Cluster } from '../utils/cluster'
 
 type AirdropResult = { sig: string } | { error: 'rate-limited' | 'unavailable' }
 
@@ -46,8 +47,30 @@ function isRateLimitError(error: unknown): boolean {
   if (isSolanaError(error, SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR)) {
     return error.context.statusCode === 429
   }
-  const message = error instanceof Error ? error.message : String(error)
-  return /429|rate.?limit|too many requests/i.test(message)
+  // JSON-RPC code -32002 is the classic devnet requestAirdrop rate-limit
+  // response. kit 8.4.0 routes it through the preflight-failure branch, which
+  // drops the server's message — and throws a plain TypeError instead when the
+  // error body has no `data` field. requestAirdrop cannot otherwise produce a
+  // preflight failure, so both shapes mean "rate limited" here.
+  if (
+    isSolanaError(
+      error,
+      SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
+    )
+  ) {
+    return true
+  }
+  if (error instanceof TypeError && /Cannot destructure property 'err'/.test(error.message)) {
+    return true
+  }
+  const messages = [error instanceof Error ? error.message : String(error)]
+  if (isSolanaError(error) && '__serverMessage' in error.context) {
+    messages.push(String(error.context.__serverMessage))
+  }
+  if (error instanceof Error && error.cause instanceof Error) {
+    messages.push(error.cause.message)
+  }
+  return messages.some((m) => /429|rate.?limit|too many requests/i.test(m))
 }
 
 export function useSolana() {
@@ -65,7 +88,7 @@ export function useSolana() {
 
   async function requestDevnetAirdrop(addr: string, sol: number | string): Promise<AirdropResult> {
     const amount = parseSolToLamports(typeof sol === 'number' ? String(sol) : sol)
-    if (amount === null || !isValidRecipient(addr)) return { error: 'unavailable' }
+    if (amount === null || !isValidSolanaAddress(addr)) return { error: 'unavailable' }
     try {
       const sig = await getRpc('devnet')
         .requestAirdrop(toAddress(addr), toLamports(amount))
@@ -98,13 +121,4 @@ export function useSolana() {
   }
 
   return { cluster, setCluster, getBalance, requestDevnetAirdrop, sendAndConfirm }
-}
-
-function isValidRecipient(addr: string): boolean {
-  try {
-    toAddress(addr)
-    return true
-  } catch {
-    return false
-  }
 }
