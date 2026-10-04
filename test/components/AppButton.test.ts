@@ -63,4 +63,36 @@ describe('AppButton', () => {
     await wrapper.find('button').trigger('click')
     expect(wrapper.emitted('click')).toHaveLength(1)
   })
+
+  it('suppresses click while loading', async () => {
+    const wrapper = mountButton({
+      props: { loading: true },
+      slots: { default: 'Connecting' },
+    })
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.emitted('click')).toBeUndefined()
+  })
+
+  it('marks a disabled link as inert and suppresses click', async () => {
+    const wrapper = mountButton({
+      props: { to: '/lesson/1', disabled: true },
+      slots: { default: 'Start lesson' },
+    })
+    const link = wrapper.find('a')
+    expect(link.attributes('aria-disabled')).toBe('true')
+    expect(link.attributes('tabindex')).toBe('-1')
+    await link.trigger('click')
+    expect(wrapper.emitted('click')).toBeUndefined()
+  })
+
+  it('sets aria-busy on a loading link and suppresses click', async () => {
+    const wrapper = mountButton({
+      props: { to: '/lesson/1', loading: true },
+      slots: { default: 'Start lesson' },
+    })
+    const link = wrapper.find('a')
+    expect(link.attributes('aria-busy')).toBe('true')
+    await link.trigger('click')
+    expect(wrapper.emitted('click')).toBeUndefined()
+  })
 })
