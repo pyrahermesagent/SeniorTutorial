@@ -99,6 +99,11 @@ export function useSolana() {
     }
   }
 
+  async function getLatestBlockhash() {
+    const { value } = await getRpc(cluster.value).getLatestBlockhash().send()
+    return value
+  }
+
   async function sendAndConfirm(ixs: Instruction[], signer: TransactionSigner): Promise<string> {
     const current = cluster.value
     const rpc = getRpc(current)
@@ -120,5 +125,5 @@ export function useSolana() {
     return getSignatureFromTransaction(signed)
   }
 
-  return { cluster, setCluster, getBalance, requestDevnetAirdrop, sendAndConfirm }
+  return { cluster, setCluster, getBalance, requestDevnetAirdrop, getLatestBlockhash, sendAndConfirm }
 }

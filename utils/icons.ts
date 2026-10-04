@@ -2,10 +2,14 @@ import type { FunctionalComponent } from 'vue'
 import {
   ArrowRight,
   Check,
+  ChevronDown,
   CircleCheck,
+  Copy,
+  ExternalLink,
   GraduationCap,
   Info,
   LoaderCircle,
+  LogOut,
   Menu,
   TriangleAlert,
   Wallet,
@@ -27,4 +31,8 @@ export const iconMap: Record<string, FunctionalComponent> = {
   'loader-circle': LoaderCircle,
   menu: Menu,
   x: X,
+  copy: Copy,
+  'log-out': LogOut,
+  'chevron-down': ChevronDown,
+  'external-link': ExternalLink,
 }

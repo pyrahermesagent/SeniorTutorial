@@ -14,7 +14,10 @@
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible": "^5.3.0",
+    "@solana-mobile/wallet-standard-mobile": "^0.6.0",
     "@solana/kit": "^8.4.0",
+    "@wallet-standard/app": "^1.1.1",
+    "@wallet-standard/base": "^1.1.1",
     "lucide-vue-next": "^1.0.0",
     "nuxt": "^4.5.2",
     "vue": "^3.5.40",
