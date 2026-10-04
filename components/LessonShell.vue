@@ -102,6 +102,9 @@ function onComplete() {
   align-items: center;
   gap: var(--space-1);
   align-self: flex-start;
+  min-height: 2.4rem; /* 48px touch target */
+  padding: var(--space-1) var(--space-2);
+  margin-left: calc(-1 * var(--space-2)); /* keeps the label aligned with the title */
   font-size: var(--text-base);
   font-weight: 700;
 }

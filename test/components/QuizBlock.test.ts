@@ -34,10 +34,11 @@ const nuxtLinkStub = {
   template: '<a :href="to"><slot /></a>',
 }
 
-function mountQuiz() {
+function mountQuiz(options: Record<string, unknown> = {}) {
   return mount(QuizBlock, {
     props: { questions: QUESTIONS },
     global: { stubs: { NuxtLink: nuxtLinkStub } },
+    ...options,
   })
 }
 
@@ -114,6 +115,37 @@ describe('QuizBlock', () => {
 
     await clickAction(wrapper, 'Next question')
     expect(wrapper.text()).toContain('Question 2 of 4')
+  })
+
+  it('moves focus into the feedback region after answering', async () => {
+    const wrapper = mountQuiz({ attachTo: document.body })
+    await answerCurrentCorrectly(wrapper, 0)
+    await wrapper.vm.$nextTick()
+    const feedback = wrapper.find('.quiz-block__feedback')
+    expect(feedback.exists()).toBe(true)
+    expect(document.activeElement).toBe(feedback.element)
+    wrapper.unmount()
+  })
+
+  it('moves focus to the next question after advancing', async () => {
+    const wrapper = mountQuiz({ attachTo: document.body })
+    await answerCurrentCorrectly(wrapper, 0)
+    await clickAction(wrapper, 'Next question')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('Question 2 of 4')
+    expect(document.activeElement).toBe(wrapper.find('.quiz-block__question').element)
+    wrapper.unmount()
+  })
+
+  it('moves focus back to the question after choosing Try again', async () => {
+    const wrapper = mountQuiz({ attachTo: document.body })
+    const wrong = QUESTIONS[0].options[1 - QUESTIONS[0].answer]
+    await clickOption(wrapper, wrong)
+    await clickAction(wrapper, 'Try again')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findAll('.quiz-block__option')).toHaveLength(QUESTIONS[0].options.length)
+    expect(document.activeElement).toBe(wrapper.find('.quiz-block__question').element)
+    wrapper.unmount()
   })
 
   it('still emits passed(4, 4) when a question needed a retry', async () => {

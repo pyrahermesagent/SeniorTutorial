@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import AppButton from './AppButton.vue'
 import AppNotice from './AppNotice.vue'
 
@@ -25,6 +25,25 @@ const finished = ref(false)
 const total = computed(() => props.questions.length)
 const current = computed(() => props.questions[currentIndex.value])
 
+const questionEl = ref<HTMLElement | null>(null)
+const feedbackEl = ref<HTMLElement | null>(null)
+
+/*
+ * Phase changes swap which controls exist, so the focused element is
+ * unmounted on every transition. Move focus explicitly after each render:
+ * into the feedback region after an answer, back to the question heading
+ * after advancing or retrying.
+ */
+async function focusFeedback() {
+  await nextTick()
+  feedbackEl.value?.focus()
+}
+
+async function focusQuestion() {
+  await nextTick()
+  questionEl.value?.focus()
+}
+
 function pick(index: number) {
   if (phase.value !== 'answering') {
     return
@@ -38,16 +57,19 @@ function pick(index: number) {
       emit('passed', correctIndices.value.size, total.value)
     }
   }
+  void focusFeedback()
 }
 
 function retry() {
   phase.value = 'answering'
+  void focusQuestion()
 }
 
 function next() {
   if (currentIndex.value < total.value - 1) {
     currentIndex.value += 1
     phase.value = 'answering'
+    void focusQuestion()
   }
 }
 </script>
@@ -57,7 +79,7 @@ function next() {
     <p class="quiz-block__progress" aria-live="polite">
       Question {{ currentIndex + 1 }} of {{ total }}
     </p>
-    <h3 class="quiz-block__question">{{ current.q }}</h3>
+    <h3 ref="questionEl" class="quiz-block__question" tabindex="-1">{{ current.q }}</h3>
 
     <ul v-if="phase === 'answering'" class="quiz-block__options" role="list">
       <li v-for="(option, index) in current.options" :key="index">
@@ -67,8 +89,8 @@ function next() {
       </li>
     </ul>
 
-    <template v-else>
-      <AppNotice :kind="lastCorrect ? 'success' : 'info'" class="quiz-block__feedback">
+    <div v-else ref="feedbackEl" class="quiz-block__feedback" tabindex="-1">
+      <AppNotice :kind="lastCorrect ? 'success' : 'info'" class="quiz-block__notice">
         <p class="quiz-block__verdict">
           {{ lastCorrect ? "That's right." : 'Not quite — have another look.' }}
         </p>
@@ -81,7 +103,7 @@ function next() {
         <AppButton v-if="!lastCorrect" @click="retry">Try again</AppButton>
         <AppButton v-else @click="next">Next question</AppButton>
       </div>
-    </template>
+    </div>
   </section>
 </template>
 
@@ -131,6 +153,12 @@ function next() {
 
 .quiz-block__option:hover {
   background-color: color-mix(in srgb, var(--color-accent) 20%, var(--color-surface));
+}
+
+.quiz-block__feedback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .quiz-block__feedback :deep(p) {
