@@ -1,5 +1,6 @@
 import type { FunctionalComponent } from 'vue'
 import {
+  ArrowLeft,
   ArrowRight,
   BookOpen,
   Check,
@@ -17,6 +18,7 @@ import {
   Menu,
   Network,
   NotebookPen,
+  RefreshCw,
   Rocket,
   ShieldCheck,
   TriangleAlert,
@@ -34,6 +36,8 @@ export const iconMap: Record<string, FunctionalComponent> = {
   wallet: Wallet,
   'graduation-cap': GraduationCap,
   'arrow-right': ArrowRight,
+  'arrow-left': ArrowLeft,
+  'refresh-cw': RefreshCw,
   check: Check,
   info: Info,
   'triangle-alert': TriangleAlert,
