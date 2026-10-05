@@ -11,7 +11,6 @@ import {
   Copy,
   Droplets,
   ExternalLink,
-  Globe,
   GraduationCap,
   Info,
   KeyRound,
@@ -73,6 +72,5 @@ export const iconMap: Record<string, FunctionalComponent> = {
   'server-off': ServerOff,
   monitor: Monitor,
   smartphone: Smartphone,
-  globe: Globe,
   droplets: Droplets,
 }

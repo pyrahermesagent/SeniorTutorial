@@ -1,11 +1,12 @@
 /*
  * Wallet install links and fiat on-ramps for the Getting Started page.
  * Play Store URLs are pinned by the design spec; App Store / extension
- * links were verified to resolve. Onramp address-prefilling is only used
- * where the provider documents the parameter (MoonPay, Topper); Coinbase
- * Pay needs a registered appId for prefill, so it links to its plain
- * Solana buying guide and the note tells the learner to paste their
- * address themselves.
+ * links were verified to resolve. Onramp address-prefilling: only MoonPay
+ * documents its `walletAddress` parameter. Topper's prefill works in the
+ * live app today but is undocumented and may silently degrade — if it does,
+ * fall back to the plain URL + paste note like Coinbase. Coinbase Pay needs
+ * a registered appId for prefill, so it links to its plain Solana buying
+ * guide and the note tells the learner to paste their address themselves.
  */
 
 export interface WalletInstallEntry {

@@ -39,7 +39,7 @@ describe('ONRAMPS', () => {
     expect(url).toContain('currencyCode=sol')
   })
 
-  it('Topper pre-fills the wallet address (documented walletAddress param)', () => {
+  it('Topper pre-fills the wallet address (undocumented today — may silently degrade)', () => {
     const topper = ONRAMPS.find((o) => o.name === 'Topper')!
     const url = topper.buildUrl(SAMPLE_ADDRESS)
     expect(url.startsWith('https://app.topperpay.com')).toBe(true)

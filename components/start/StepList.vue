@@ -93,7 +93,7 @@ const CHALLENGE_PREVIEWS = [
       <details class="step" open>
         <summary class="step__summary">
           <span class="step__number" aria-hidden="true">1</span>
-          <span class="step__title">Get a wallet</span>
+          <h2 class="step__title">Get a wallet</h2>
           <span v-if="step1Done" class="step__done">
             <AppIcon name="circle-check" :size="24" />
             Done
@@ -129,7 +129,7 @@ const CHALLENGE_PREVIEWS = [
       <details class="step">
         <summary class="step__summary">
           <span class="step__number" aria-hidden="true">2</span>
-          <span class="step__title">Add about $10 of SOL</span>
+          <h2 class="step__title">Add about $10 of SOL</h2>
           <span v-if="step2Done" class="step__done">
             <AppIcon name="circle-check" :size="24" />
             Done
@@ -192,7 +192,7 @@ const CHALLENGE_PREVIEWS = [
       <details class="step">
         <summary class="step__summary">
           <span class="step__number" aria-hidden="true">3</span>
-          <span class="step__title">Your first challenges</span>
+          <h2 class="step__title">Your first challenges</h2>
           <AppIcon name="chevron-down" :size="28" class="step__chevron" />
         </summary>
         <div class="step__body">
@@ -286,6 +286,10 @@ const CHALLENGE_PREVIEWS = [
 
 .step__title {
   flex: 1;
+  margin: 0; /* reset h2 margins — the summary owns the layout */
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .step__done {
