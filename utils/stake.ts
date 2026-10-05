@@ -38,10 +38,17 @@ export function getStakeRent(): bigint {
   return STAKE_ACCOUNT_RENT_LAMPORTS
 }
 
-// Challenge rules: 0.01 SOL keeps the gesture small but real. The staking
-// transaction carries two signatures (the wallet fee payer plus the fresh
-// stake-account keypair), so the network fee is 2 × 5000 lamports.
-export const MIN_STAKE_LAMPORTS = 10_000_000n // 0.01 SOL
+/*
+ * Minimum stake: the ON-CHAIN floor, not a challenge rule of ours. The stake
+ * program's get_minimum_delegation() returns 1 SOL, and DelegateStake rejects
+ * anything smaller with StakeError::InsufficientDelegation (Custom 0xc) from
+ * validate_delegated_amount — proven by simulateTransaction on both clusters
+ * (live-chain review, 2026-10-05). The balance headroom must therefore cover
+ * 1 SOL + STAKE_ACCOUNT_RENT_LAMPORTS + fee. The staking transaction carries
+ * two signatures (the wallet fee payer plus the fresh stake-account keypair),
+ * so the network fee is 2 × 5000 lamports.
+ */
+export const MIN_STAKE_LAMPORTS = 1_000_000_000n // 1 SOL
 export const STAKE_FEE_LAMPORTS = 10_000n
 
 export type StakeAmountValidation = { ok: true; lamports: bigint } | { ok: false; reason: string }
@@ -58,13 +65,16 @@ export function validateStakeAmount({
     if (/^\d+\.\d{10,}$/.test(amountSol.trim())) {
       return {
         ok: false,
-        reason: 'SOL amounts have at most 9 decimal places — please round it, like 0.01.',
+        reason: 'SOL amounts have at most 9 decimal places — please round it, like 1.',
       }
     }
-    return { ok: false, reason: 'Please type the amount as a number, like 0.01.' }
+    return { ok: false, reason: 'Please type the amount as a number, like 1.' }
   }
   if (lamports < MIN_STAKE_LAMPORTS) {
-    return { ok: false, reason: 'The challenge is to stake at least 0.01 SOL.' }
+    return {
+      ok: false,
+      reason: 'Staking needs at least 1 SOL — smaller amounts cannot be staked on Solana.',
+    }
   }
   if (lamports + STAKE_ACCOUNT_RENT_LAMPORTS + STAKE_FEE_LAMPORTS > balanceLamports) {
     return {

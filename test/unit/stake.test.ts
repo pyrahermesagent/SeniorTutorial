@@ -37,8 +37,8 @@ import {
 const WALLET = '4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM'
 // Helius mainnet vote account — a real vote address; see utils/validators.ts.
 const VOTE = 'he1iusunGwqrNtafDtLdhsUQDFvo13z9sUa36PauBtk'
-const STAKE_AMOUNT = 10_000_000n // 0.01 SOL
-const AMPLE_BALANCE = 1_000_000_000n // 1 SOL
+const STAKE_AMOUNT = 1_000_000_000n // 1 SOL — the on-chain minimum delegation
+const AMPLE_BALANCE = 2_000_000_000n // 2 SOL
 
 /**
  * Mirrors the useWallet signTransaction fallback: a wallet that can only
@@ -62,23 +62,29 @@ async function build() {
 }
 
 describe('validateStakeAmount', () => {
-  it('rejects an amount below the challenge minimum and says what the minimum is', () => {
-    const result = validateStakeAmount({ amountSol: '0.005', balanceLamports: AMPLE_BALANCE })
+  it('anchors the minimum stake to the on-chain 1 SOL delegation floor', () => {
+    // get_minimum_delegation() in the stake program returns 1 SOL; DelegateStake
+    // rejects less with StakeError::InsufficientDelegation.
+    expect(MIN_STAKE_LAMPORTS).toBe(1_000_000_000n)
+  })
+
+  it('rejects 0.5 SOL and says the minimum is 1 SOL', () => {
+    const result = validateStakeAmount({ amountSol: '0.5', balanceLamports: AMPLE_BALANCE })
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.reason).toContain('0.01')
+    expect(result.reason).toContain('1 SOL')
     expect(result.reason.toLowerCase()).toMatch(/at least|minimum/)
   })
 
-  it('accepts exactly the minimum amount with an ample balance', () => {
-    const result = validateStakeAmount({ amountSol: '0.01', balanceLamports: AMPLE_BALANCE })
+  it('accepts 1 SOL with an ample balance', () => {
+    const result = validateStakeAmount({ amountSol: '1', balanceLamports: AMPLE_BALANCE })
     expect(result).toEqual({ ok: true, lamports: MIN_STAKE_LAMPORTS })
   })
 
   it('rejects when the balance covers the stake but not the rent reserve and fee', () => {
     const needed = MIN_STAKE_LAMPORTS + STAKE_ACCOUNT_RENT_LAMPORTS
     const result = validateStakeAmount({
-      amountSol: '0.01',
+      amountSol: '1',
       balanceLamports: needed, // covers amount + rent but not the fee on top
     })
     expect(result.ok).toBe(false)
@@ -88,7 +94,7 @@ describe('validateStakeAmount', () => {
 
   it('accepts when the balance covers the amount, rent reserve, and fee exactly', () => {
     const result = validateStakeAmount({
-      amountSol: '0.01',
+      amountSol: '1',
       balanceLamports: MIN_STAKE_LAMPORTS + STAKE_ACCOUNT_RENT_LAMPORTS + 10_000n,
     })
     expect(result.ok).toBe(true)

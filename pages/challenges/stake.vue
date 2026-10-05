@@ -268,11 +268,19 @@ async function confirmAndStake() {
             class="stake__input"
             type="text"
             inputmode="decimal"
-            placeholder="0.01"
+            placeholder="1"
             autocomplete="off"
           />
           <p v-if="amountProblem" class="stake__hint" role="alert">{{ amountProblem }}</p>
-          <p v-else class="stake__hint">At least 0.01 SOL — small is perfect for a first stake.</p>
+          <p v-else class="stake__hint">
+            Stakes start at 1 SOL — that minimum comes from the Solana network itself, not from
+            us.
+          </p>
+          <p class="stake__hint">
+            On Mainnet that 1 SOL is real money. Practicing first? On the Devnet practice network
+            you can get free practice SOL from the
+            <NuxtLink to="/start" class="stake__link">Get Started page</NuxtLink>.
+          </p>
         </div>
 
         <AppButton size="lg" :disabled="!canReview" @click="startReview">
@@ -446,6 +454,10 @@ async function confirmAndStake() {
   margin: 0;
   font-size: var(--text-base);
   color: var(--color-ink);
+}
+
+.stake__link {
+  font-weight: 700;
 }
 
 .stake__subtitle {
