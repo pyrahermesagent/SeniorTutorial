@@ -63,7 +63,7 @@ const failureCopy = computed(
     <p class="tx-status__text">
       Well done — it went through!
       <template v-if="explorerUrl">
-        You can see it on the Solana Explorer:
+        Your transaction is recorded on Solana.
         <a :href="explorerUrl" target="_blank" rel="noopener noreferrer" class="tx-status__link">
           See it on the Solana Explorer
           <AppIcon name="external-link" :size="20" />

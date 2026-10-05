@@ -61,6 +61,14 @@ describe('TxStatus', () => {
     expect(wrapper.find('[role="status"]').exists()).toBe(true)
   })
 
+  it('leads into the explorer link without repeating the link text', () => {
+    const wrapper = mountTxStatus({ state: 'success', signature: SIGNATURE })
+    const text = wrapper.text()
+    expect(text).toContain('Your transaction is recorded on Solana.')
+    expect(text).not.toContain('You can see it on the Solana Explorer:')
+    expect(text.match(/See it on the Solana Explorer/g)).toHaveLength(1)
+  })
+
   it('omits the cluster param on mainnet', () => {
     mocks.cluster.value = 'mainnet-beta'
     const wrapper = mountTxStatus({ state: 'success', signature: SIGNATURE })
