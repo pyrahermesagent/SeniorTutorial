@@ -7,6 +7,7 @@ import {
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
+  getBase64Decoder,
   getSignatureFromTransaction,
   isSolanaError,
   lamports as toLamports,
@@ -15,6 +16,7 @@ import {
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
+  type Base64EncodedWireTransaction,
   type Instruction,
   type Rpc,
   type RpcSubscriptions,
@@ -28,6 +30,10 @@ import { useProgress } from './useProgress'
 import { CLUSTERS, isValidSolanaAddress, parseSolToLamports, type Cluster } from '../utils/cluster'
 
 type AirdropResult = { sig: string } | { error: 'rate-limited' | 'unavailable' }
+
+// A fresh blockhash is normally valid for ~90 s; give a little more room.
+const CONFIRMATION_TIMEOUT_MS = 120_000
+const CONFIRMATION_POLL_INTERVAL_MS = 2_000
 
 type RpcClient = Rpc<SolanaRpcApi>
 type SubscriptionsClient = RpcSubscriptions<SignatureNotificationsApi & SlotNotificationsApi>
@@ -125,5 +131,43 @@ export function useSolana() {
     return getSignatureFromTransaction(signed)
   }
 
-  return { cluster, setCluster, getBalance, requestDevnetAirdrop, getLatestBlockhash, sendAndConfirm }
+  /*
+   * Broadcasts a wallet-signed transaction (the useWallet signTransaction
+   * fallback for DEX-built versioned txs) and waits for confirmation. The
+   * preflight stays on: if the network would reject it, we learn before
+   * anything is sent. Confirmation polls signature statuses rather than
+   * opening a websocket, so it works in every browser/chain and needs no
+   * lifetime decoding of the foreign (aggregator-built) transaction bytes.
+   */
+  async function sendSignedTransaction(signedTransaction: Uint8Array): Promise<string> {
+    const rpc = getRpc(cluster.value)
+    // kit codec naming: the base64 *decoder* maps bytes to the wire string.
+    const wireTransaction = getBase64Decoder().decode(
+      signedTransaction,
+    ) as Base64EncodedWireTransaction
+    const signature = await rpc.sendTransaction(wireTransaction, { encoding: 'base64' }).send()
+    const deadline = Date.now() + CONFIRMATION_TIMEOUT_MS
+    for (;;) {
+      const { value } = await rpc.getSignatureStatuses([signature]).send()
+      const status = value[0]
+      if (status?.err) throw new Error('The transaction failed on the network.')
+      if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') {
+        return signature
+      }
+      if (Date.now() > deadline) {
+        throw new Error('The transaction could not be confirmed yet.')
+      }
+      await new Promise((resolve) => setTimeout(resolve, CONFIRMATION_POLL_INTERVAL_MS))
+    }
+  }
+
+  return {
+    cluster,
+    setCluster,
+    getBalance,
+    requestDevnetAirdrop,
+    getLatestBlockhash,
+    sendAndConfirm,
+    sendSignedTransaction,
+  }
 }

@@ -1,10 +1,12 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest'
-import type { Wallet } from '@wallet-standard/base'
+import { describe, expect, it, vi } from 'vitest'
+import type { Wallet, WalletAccount } from '@wallet-standard/base'
+import { getBase58Decoder } from '@solana/kit'
 import {
   SOLANA_CHAIN_BY_CLUSTER,
   classifySendError,
   isSolanaStandardWallet,
+  sendVersionedTransactionViaWallet,
   shortenAddress,
   walletDisplayName,
 } from '../../utils/wallets'
@@ -167,5 +169,113 @@ describe('classifySendError', () => {
 
   it.each([null, undefined, 'boom', 42])('maps %j to failed', (value) => {
     expect(classifySendError(value)).toBe('failed')
+  })
+})
+
+
+function fakeWalletAccount(): WalletAccount {
+  return {
+    address: '4uQeVj5tqViQh7yWWGStvkEG1Zmhx6uasJtWCJziofM',
+    publicKey: new Uint8Array(32),
+    chains: ['solana:mainnet'],
+    features: [],
+  } as unknown as WalletAccount
+}
+
+// A tiny fixed payload standing in for a DEX-built versioned transaction:
+// base64 for the 8 bytes 01 02 03 04 05 06 07 08.
+const TX_BASE64 = 'AQIDBAUGBwg='
+
+describe('sendVersionedTransactionViaWallet', () => {
+  it('prefers signAndSendTransaction and returns the base58 signature', async () => {
+    const signatureBytes = new Uint8Array(64).fill(7)
+    const expected = getBase58Decoder().decode(signatureBytes)
+    const signAndSend = {
+      signAndSendTransaction: vi.fn(async () => [{ signature: signatureBytes }]),
+    }
+    const sendSignedTransaction = vi.fn(async () => 'unused')
+    const result = await sendVersionedTransactionViaWallet({
+      signAndSend,
+      account: fakeWalletAccount(),
+      chain: 'solana:mainnet',
+      transactionBase64: TX_BASE64,
+      sendSignedTransaction,
+    })
+    expect(result).toBe(expected)
+    expect(signAndSend.signAndSendTransaction).toHaveBeenCalledTimes(1)
+    const [input] = signAndSend.signAndSendTransaction.mock.calls[0]!
+    expect(input.chain).toBe('solana:mainnet')
+    expect(input.options).toEqual({ commitment: 'confirmed' })
+    // The base64 tx must arrive at the wallet as its original bytes.
+    expect(Array.from(input.transaction)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+    expect(sendSignedTransaction).not.toHaveBeenCalled()
+  })
+
+  it('falls back to signTransaction plus the RPC send callback', async () => {
+    const signedBytes = new Uint8Array([9, 8, 7])
+    const sign = {
+      signTransaction: vi.fn(async () => [{ signedTransaction: signedBytes }]),
+    }
+    const sendSignedTransaction = vi.fn(async () => '5VERFake')
+    const result = await sendVersionedTransactionViaWallet({
+      sign,
+      account: fakeWalletAccount(),
+      chain: 'solana:mainnet',
+      transactionBase64: TX_BASE64,
+      sendSignedTransaction,
+    })
+    expect(sign.signTransaction).toHaveBeenCalledTimes(1)
+    // The wallet's signed bytes are what goes to the network, not the draft.
+    expect(sendSignedTransaction).toHaveBeenCalledWith(signedBytes)
+    expect(result).toBe('5VERFake')
+  })
+
+  it('refuses when the wallet has neither feature', async () => {
+    await expect(
+      sendVersionedTransactionViaWallet({
+        account: fakeWalletAccount(),
+        chain: 'solana:mainnet',
+        transactionBase64: TX_BASE64,
+        sendSignedTransaction: vi.fn(),
+      }),
+    ).rejects.toThrow('cannot sign Solana transactions')
+  })
+
+  it('throws when the wallet returns no signature', async () => {
+    const signAndSend = {
+      signAndSendTransaction: vi.fn(async () => [] as readonly { signature: Uint8Array }[]),
+    }
+    await expect(
+      sendVersionedTransactionViaWallet({
+        signAndSend,
+        account: fakeWalletAccount(),
+        chain: 'solana:mainnet',
+        transactionBase64: TX_BASE64,
+        sendSignedTransaction: vi.fn(),
+      }),
+    ).rejects.toThrow('did not return a signature')
+  })
+
+  it('lets the wallet rejection error bubble up for the caller to classify', async () => {
+    const rejection = new Error('denied')
+    rejection.name = 'WalletSignTransactionError'
+    const signAndSend = {
+      signAndSendTransaction: vi.fn(async () => {
+        throw rejection
+      }),
+    }
+    const sendSignedTransaction = vi.fn()
+    await expect(
+      sendVersionedTransactionViaWallet({
+        signAndSend,
+        account: fakeWalletAccount(),
+        chain: 'solana:mainnet',
+        transactionBase64: TX_BASE64,
+        sendSignedTransaction,
+      }),
+    ).rejects.toBe(rejection)
+    expect(sendSignedTransaction).not.toHaveBeenCalled()
+    // …and the existing classifier agrees it is a rejection.
+    expect(classifySendError(rejection)).toBe('rejected')
   })
 })

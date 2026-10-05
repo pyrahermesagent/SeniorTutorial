@@ -24,8 +24,11 @@ import {
   SOLANA_CHAIN_BY_CLUSTER,
   classifySendError,
   isSolanaStandardWallet,
+  sendVersionedTransactionViaWallet,
   walletDisplayName,
   type StandardWalletInfo,
+  type WalletSignAndSendTransactionFeature,
+  type WalletSignTransactionFeature,
 } from '~/utils/wallets'
 
 /*
@@ -196,6 +199,38 @@ export function useWallet() {
     progress.setLastWallet(undefined)
   }
 
+  /*
+   * Signs and sends a complete, pre-built versioned transaction — the shape
+   * Jupiter's /swap endpoint returns (base64). Unlike sendInstructions, no
+   * message is assembled locally; the wallet receives the DEX's bytes. The
+   * wallet-signTransaction fallback broadcasts via useSolana, which handles
+   * the base64 round-trip and confirmation polling.
+   */
+  async function sendVersionedTransaction(transactionBase64: string): Promise<string> {
+    const current = account.value
+    const wallet = connectedWallet
+    const walletAccount =
+      wallet?.accounts.find((a) => a.address === current?.address) ?? wallet?.accounts[0]
+    if (!current || !wallet || !walletAccount) throw new Error('No wallet connected')
+    const chain: string = SOLANA_CHAIN_BY_CLUSTER[solana.cluster.value]
+    try {
+      return await sendVersionedTransactionViaWallet({
+        signAndSend: getFeature<WalletSignAndSendTransactionFeature>(
+          wallet,
+          'solana:signAndSendTransaction',
+        ),
+        sign: getFeature<WalletSignTransactionFeature>(wallet, 'solana:signTransaction'),
+        account: walletAccount,
+        chain,
+        transactionBase64,
+        sendSignedTransaction: (signed) => solana.sendSignedTransaction(signed),
+      })
+    } catch (error) {
+      if (classifySendError(error) === 'rejected') throw 'rejected'
+      throw error
+    }
+  }
+
   async function sendInstructions(ixs: unknown[]): Promise<string> {
     const current = account.value
     const wallet = connectedWallet
@@ -254,5 +289,5 @@ export function useWallet() {
     }
   }
 
-  return { wallets, account, connecting, connect, disconnect, sendInstructions }
+  return { wallets, account, connecting, connect, disconnect, sendInstructions, sendVersionedTransaction }
 }

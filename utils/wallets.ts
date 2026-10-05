@@ -1,4 +1,5 @@
-import type { Wallet } from '@wallet-standard/base'
+import type { Wallet, WalletAccount } from '@wallet-standard/base'
+import { getBase58Decoder, getBase64Encoder } from '@solana/kit'
 import type { Cluster } from './cluster'
 
 /** Wallet information safe to hand to the UI: display data plus the live wallet. */
@@ -57,4 +58,74 @@ export function classifySendError(error: unknown): 'rejected' | 'failed' {
   if (name === MWA_PROTOCOL_ERROR_NAME && code === MWA_AUTHORIZATION_FAILED_CODE) return 'rejected'
   if (typeof name === 'string' && REJECTION_NAME.test(name)) return 'rejected'
   return 'failed'
+}
+
+
+/*
+ * Minimal structural types for the wallet-standard features used when a DEX
+ * hands us a complete, pre-built versioned transaction (e.g. a Jupiter swap
+ * tx) instead of instruction lists. Kept local: the feature type packages
+ * are transitive deps, so we narrow with shapes like useWallet.ts does.
+ */
+export interface WalletSignAndSendTransactionFeature {
+  signAndSendTransaction(
+    ...inputs: readonly {
+      account: WalletAccount
+      transaction: Uint8Array
+      chain: string
+      options?: { commitment?: 'processed' | 'confirmed' | 'finalized' }
+    }[]
+  ): Promise<readonly { signature: Uint8Array }[]>
+}
+
+export interface WalletSignTransactionFeature {
+  signTransaction(
+    ...inputs: readonly { account: WalletAccount; transaction: Uint8Array; chain?: string }[]
+  ): Promise<readonly { signedTransaction: Uint8Array }[]>
+}
+
+export interface SendVersionedTransactionInput {
+  signAndSend?: WalletSignAndSendTransactionFeature
+  sign?: WalletSignTransactionFeature
+  account: WalletAccount
+  /** Wallet-standard chain id, e.g. 'solana:mainnet'. */
+  chain: string
+  /** Base64-encoded versioned transaction, as Jupiter's /swap returns it. */
+  transactionBase64: string
+  /** Sends a wallet-signed transaction to the network and confirms it. */
+  sendSignedTransaction: (signedTransaction: Uint8Array) => Promise<string>
+}
+
+/*
+ * Signs and sends a pre-built versioned transaction through the connected
+ * wallet. Prefers solana:signAndSendTransaction (the wallet submits, which is
+ * what wallets optimize for swaps); falls back to solana:signTransaction and
+ * lets the caller's `sendSignedTransaction` callback broadcast. Returns the
+ * base58 signature. Wallet rejections bubble up unchanged so callers can map
+ * them with classifySendError.
+ */
+export async function sendVersionedTransactionViaWallet({
+  signAndSend,
+  sign,
+  account,
+  chain,
+  transactionBase64,
+  sendSignedTransaction,
+}: SendVersionedTransactionInput): Promise<string> {
+  // In kit's codec naming, the base64 *encoder* maps the wire string to bytes.
+  const transaction = getBase64Encoder().encode(transactionBase64) as Uint8Array
+  if (signAndSend) {
+    const [output] = await signAndSend.signAndSendTransaction({
+      account,
+      transaction,
+      chain,
+      options: { commitment: 'confirmed' },
+    })
+    if (!output) throw new Error('The wallet did not return a signature')
+    return getBase58Decoder().decode(output.signature)
+  }
+  if (!sign) throw new Error('This wallet cannot sign Solana transactions')
+  const [output] = await sign.signTransaction({ account, transaction, chain })
+  if (!output) throw new Error('The wallet did not return a signed transaction')
+  return await sendSignedTransaction(output.signedTransaction)
 }
