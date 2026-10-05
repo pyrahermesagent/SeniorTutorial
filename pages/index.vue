@@ -7,11 +7,10 @@ import AppNotice from '../components/AppNotice.vue'
   <div class="landing">
     <section class="hero" aria-labelledby="hero-title">
       <h1 id="hero-title" class="hero__title">
-        Learn how the new internet of money works — at your own pace, one small step at a time.
+        Learn the new internet of money — one small step at a time.
       </h1>
       <p class="hero__lead">
-        Free, friendly lessons about Solana. You practice with play money first, so nothing real
-        is ever at risk.
+        Free Solana lessons. You practice with play money, so nothing real is ever at risk.
       </p>
       <div class="hero__actions">
         <AppButton to="/learn" size="lg">Start learning</AppButton>
@@ -22,11 +21,8 @@ import AppNotice from '../components/AppNotice.vue'
     </section>
 
     <AppNotice kind="info" class="landing__notice">
-      <p class="landing__notice-title">What is this?</p>
       <p class="landing__notice-text">
-        This is a free tutorial that teaches you, step by step, how Solana works — a new kind of
-        money that lives on the internet. You do not need any computer or banking experience, and
-        you can go as slowly as you like.
+        No computer or banking experience needed. Go as slowly as you like.
       </p>
     </AppNotice>
   </div>
@@ -44,6 +40,29 @@ import AppNotice from '../components/AppNotice.vue'
   flex-direction: column;
   gap: var(--space-3);
   padding-top: var(--space-4);
+}
+
+.hero > * {
+  animation: hero-rise 500ms ease-out both;
+}
+
+.hero > :nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.hero > :nth-child(3) {
+  animation-delay: 180ms;
+}
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .hero__title {
@@ -65,11 +84,6 @@ import AppNotice from '../components/AppNotice.vue'
 
 .landing__notice {
   max-width: 40rem;
-}
-
-.landing__notice-title {
-  margin: 0 0 var(--space-1);
-  font-weight: 700;
 }
 
 .landing__notice-text {

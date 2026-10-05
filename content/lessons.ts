@@ -13,6 +13,27 @@ export interface LessonMeta {
   icon: string
 }
 
+/*
+ * Slide model for the slideshow presentation. One slide = one idea: a short
+ * title plus at most two lines. A line is plain text, or an array of text
+ * pieces and inline glossary links so key words stay tappable.
+ */
+export interface GlossaryLink {
+  /** Glossary slug — must exist in content/glossary.ts. */
+  term: string
+  /** Displayed wording; defaults to the term slug itself. */
+  label?: string
+}
+
+export type SlideLine = string | Array<string | GlossaryLink>
+
+export interface LessonSlide {
+  /** Optional hero icon for the slide; a key of the curated icon map. */
+  icon?: string
+  title: string
+  lines: SlideLine[]
+}
+
 export const LESSONS: LessonMeta[] = [
   {
     slug: 'what-is-money',

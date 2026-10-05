@@ -8,8 +8,7 @@ import StepList from '../components/start/StepList.vue'
     <header class="start__header">
       <h1 class="start__title">Get started</h1>
       <p class="start__lead">
-        Three short steps: get a wallet, add a little SOL, and try your first challenge. Take
-        your time — each step is written out below, and you can open and close them as you go.
+        Three steps: get a wallet, add a little SOL, try a challenge.
       </p>
     </header>
 

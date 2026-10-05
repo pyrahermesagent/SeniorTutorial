@@ -28,8 +28,7 @@ function showDone(slug: string): boolean {
     <header class="learn__header">
       <h1 class="learn__title">Your lessons</h1>
       <p class="learn__lead">
-        Six short lessons explain how the new internet of money works — no computer or banking
-        experience needed. Go at your own pace; your progress is saved on this device.
+        Six short lessons, one idea per slide. Your progress saves on this device.
       </p>
       <p class="learn__progress" aria-live="polite">
         {{ shownDoneCount }} of {{ totalCount }} lessons completed

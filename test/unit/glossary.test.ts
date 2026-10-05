@@ -53,6 +53,19 @@ async function loadLessonTerms(): Promise<{ file: string; terms: unknown }[]> {
   )
 }
 
+async function loadLessonModules(): Promise<{ file: string; mod: Record<string, any> }[]> {
+  const dir = path.join(REPO_ROOT, 'content', 'lessons')
+  const files = readdirSync(dir)
+    .filter((name) => name.endsWith('.ts'))
+    .sort()
+  return Promise.all(
+    files.map(async (file) => ({
+      file,
+      mod: await import(pathToFileURL(path.join(dir, file)).href),
+    })),
+  )
+}
+
 const SKIP_DIRS = new Set([
   'node_modules',
   '.git',
@@ -79,10 +92,13 @@ function collectVueFiles(dir: string): string[] {
   return files
 }
 
-/* All slugs handed to <GlossaryTerm term="…"> in one .vue source file. */
+/* All static slugs handed to <GlossaryTerm term="…"> in one .vue source file.
+   Dynamic :term="…" bindings (the slideshow renders them from slide data) are
+   not statically checkable and are skipped here; slide data slugs are covered
+   by the per-lesson `terms` pins above. */
 function extractGlossaryTermSlugs(source: string): string[] {
   const slugs: string[] = []
-  for (const match of source.matchAll(/<GlossaryTerm\b[^>]*?\bterm="([^"]+)"/g)) {
+  for (const match of source.matchAll(/<GlossaryTerm\b[^>]*?(?<!:)term="([^"]+)"/g)) {
     slugs.push(match[1]!)
   }
   return slugs
@@ -139,5 +155,25 @@ describe('GLOSSARY content model', () => {
         expect(glossarySlugs, `${file} links to /glossary#${slug} with no glossary entry`).toContain(slug)
       }
     }
+  })
+
+  it('every glossary link inside lesson slide data exists in the glossary', async () => {
+    const modules = await loadLessonModules()
+    let checked = 0
+    for (const { file, mod } of modules) {
+      const slides = (mod.slides ?? []) as Array<{ lines?: Array<unknown> }>
+      for (const slide of slides) {
+        for (const line of slide.lines ?? []) {
+          if (typeof line === 'string') continue
+          for (const segment of line as Array<string | { term?: string }>) {
+            if (typeof segment === 'object' && segment.term) {
+              checked += 1
+              expect(glossarySlugs, `content/lessons/${file} slide links to "${segment.term}" with no glossary entry`).toContain(segment.term)
+            }
+          }
+        }
+      }
+    }
+    expect(checked, 'slide data should contain at least one glossary link').toBeGreaterThan(0)
   })
 })

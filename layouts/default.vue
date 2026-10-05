@@ -18,6 +18,8 @@ import AppTopBar from '../components/AppTopBar.vue'
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* dvh keeps mobile URL-bar collapse from causing layout jumps. */
+  min-height: 100dvh;
 }
 
 .layout__main {

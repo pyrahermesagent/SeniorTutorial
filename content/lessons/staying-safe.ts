@@ -1,3 +1,5 @@
+import type { LessonSlide } from '../lessons'
+
 /**
  * Lesson 6 — safety quiz content.
  * Shape matches QuizBlock's QuizQuestion; kept dependency-free so the data
@@ -6,6 +8,30 @@
 
 /** Glossary terms used by lesson 6 — consumed by the glossary consistency test. */
 export const terms = ['recovery-phrase', 'wallet']
+
+export const slides: LessonSlide[] = [
+  {
+    icon: 'shield-check',
+    title: 'The one rule',
+    lines: [
+      ['Never share your ', { term: 'recovery-phrase', label: 'recovery phrase' }, '. Ever.'],
+      ['Real ', { term: 'wallet', label: 'wallet' }, ' support will never ask for it.'],
+    ],
+  },
+  {
+    icon: 'triangle-alert',
+    title: 'Spot the tricks',
+    lines: ['They rush you — and ask for something secret.', 'Hang up. Delete. Breathe.'],
+  },
+  {
+    icon: 'send',
+    title: 'Send with care',
+    lines: [
+      'Check the first and last characters of the address.',
+      'Trying something new? Send a small test first.',
+    ],
+  },
+]
 
 export interface SafetyQuestion {
   q: string

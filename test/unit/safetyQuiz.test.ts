@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import type { ProgressState } from '../../utils/progress'
 import { SAFETY_QUESTIONS } from '../../content/lessons/staying-safe'
 
@@ -41,10 +41,18 @@ const nuxtLinkStub = {
   template: '<a :href="to"><slot /></a>',
 }
 
-function mountLesson() {
-  return mount(StayingSafe, {
+/*
+ * The slideshow shows one slide at a time; the quiz lives on the lesson's
+ * interactive slide. Mount, then jump straight to it via its dot control.
+ */
+async function mountLesson() {
+  const wrapper = mount(StayingSafe, {
     global: { stubs: { NuxtLink: nuxtLinkStub } },
   })
+  await flushPromises()
+  await wrapper.get('[aria-label="Go to: Check your instincts"]').trigger('click')
+  await flushPromises()
+  return wrapper
 }
 
 async function clickOption(wrapper: VueWrapper, text: string) {
@@ -92,14 +100,14 @@ describe('StayingSafe lesson quiz wiring', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the quiz with the safety questions', () => {
-    const wrapper = mountLesson()
+  it('renders the quiz with the safety questions', async () => {
+    const wrapper = await mountLesson()
     expect(wrapper.text()).toContain(SAFETY_QUESTIONS[0].q)
     expect(wrapper.text()).toContain(`Question 1 of ${SAFETY_QUESTIONS.length}`)
   })
 
   it('marks the lesson done, saves the score, and shows a success notice when the quiz is passed', async () => {
-    const wrapper = mountLesson()
+    const wrapper = await mountLesson()
     for (let index = 0; index < SAFETY_QUESTIONS.length; index += 1) {
       const question = SAFETY_QUESTIONS[index]
       await clickOption(wrapper, question.options[question.answer])
@@ -117,7 +125,7 @@ describe('StayingSafe lesson quiz wiring', () => {
   })
 
   it('does not mark the lesson done before the quiz is passed', async () => {
-    const wrapper = mountLesson()
+    const wrapper = await mountLesson()
     await clickOption(wrapper, SAFETY_QUESTIONS[0].options[SAFETY_QUESTIONS[0].answer])
     expect(mocks.markLessonDone).not.toHaveBeenCalled()
     expect(mocks.saveQuizScore).not.toHaveBeenCalled()

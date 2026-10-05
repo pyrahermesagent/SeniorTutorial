@@ -11,6 +11,7 @@
 html {
   font-size: 20px;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -21,6 +22,16 @@ body {
   font-size: var(--text-base);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-wrap: break-word;
+}
+
+/* Keep display headings from dominating small phone screens. */
+@media (max-width: 480px) {
+  :root {
+    --text-2xl: 1.6rem;
+    --text-3xl: 1.9rem;
+  }
 }
 
 h1,
