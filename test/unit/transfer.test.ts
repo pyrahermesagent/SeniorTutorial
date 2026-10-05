@@ -40,6 +40,27 @@ describe('validateTransfer', () => {
     expect(result.lamports).toBe(MIN_TRANSFER_LAMPORTS)
   })
 
+  it('rejects a 9-decimal sub-minimum with the minimum reason, not a parse error', () => {
+    const result = validateTransfer({
+      to: RECIPIENT,
+      amountSol: '0.000999999',
+      balanceLamports: AMPLE_BALANCE,
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('at least 0.001')
+  })
+
+  it('accepts an enormous valid amount with an ample balance', () => {
+    const oneMillionSol = 1_000_000_000_000_000n
+    const result = validateTransfer({
+      to: RECIPIENT,
+      amountSol: '1000000',
+      balanceLamports: oneMillionSol + 5_000n,
+    })
+    expect(result).toEqual({ ok: true, lamports: oneMillionSol })
+  })
+
   it('rejects a recipient that is not a Solana address', () => {
     const result = validateTransfer({
       to: 'grandma@example.com',
@@ -60,6 +81,18 @@ describe('validateTransfer', () => {
       })
       expect(result.ok, `amount ${JSON.stringify(amountSol)} is rejected`).toBe(false)
     }
+  })
+
+  it('rejects a numeric amount with more than 9 decimals with a rounding hint', () => {
+    const result = validateTransfer({
+      to: RECIPIENT,
+      amountSol: '0.0009999999',
+      balanceLamports: AMPLE_BALANCE,
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.reason).toContain('9 decimal places')
+    expect(result.reason).not.toContain('as a number')
   })
 
   it('rejects an amount that would not leave room for the network fee', () => {

@@ -128,6 +128,31 @@ describe('transfer challenge page', () => {
     )
   })
 
+  it('explains and returns to the form when the transfer goes stale at review', async () => {
+    const wrapper = await mountConnected()
+    await fillForm(wrapper, RECIPIENT, '0.5')
+    await reviewButton(wrapper).trigger('click')
+    expect(wrapper.text()).toContain('You are sending 0.5 SOL')
+
+    // The balance drops below amount + fee while the review card sits open.
+    mocks.getBalance.mockResolvedValue(100_000_000n) // 0.1 SOL
+    await wrapper.find('button[aria-label="Refresh balance"]').trigger('click')
+    await flushPromises()
+
+    const confirm = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Yes — send it now'))!
+    await confirm.trigger('click')
+
+    // Never a dead click: nothing is sent, the reason is shown, and the
+    // learner is back on the edit form with live validation still guiding.
+    expect(mocks.sendInstructions).not.toHaveBeenCalled()
+    const alert = wrapper.find('[role="alert"]')
+    expect(alert.exists()).toBe(true)
+    expect(alert.text()).toContain('does not have quite enough SOL')
+    expect(reviewButton(wrapper).attributes('disabled')).toBeDefined()
+  })
+
   it('restores the review step when the learner cancels in their wallet', async () => {
     // The real composable throws the literal string 'rejected' when the
     // learner says no in their wallet — mirror that exactly.

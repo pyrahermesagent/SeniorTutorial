@@ -100,6 +100,7 @@ const summaryCopy = computed(() => {
 
 function startReview() {
   if (!canReview.value) return
+  staleReason.value = null
   step.value = 'review'
 }
 
@@ -121,8 +122,21 @@ function toPlainSendError(error: unknown): string {
   return 'The transfer did not go through — nothing was sent.'
 }
 
+// If the details go stale while the review card is open (say the balance
+// changed), confirming must never be a dead click: explain and go back.
+const staleReason = ref<string | null>(null)
+watch([recipient, amount], () => {
+  staleReason.value = null
+})
+
 async function confirmAndSend() {
-  if (!validation.value.ok || !account.value) return
+  if (!validation.value.ok) {
+    staleReason.value = validation.value.reason
+    txState.value = 'idle'
+    step.value = 'form'
+    return
+  }
+  if (!account.value) return
   const lamports = validation.value.lamports
   step.value = 'sending'
   signature.value = undefined
@@ -182,6 +196,10 @@ async function confirmAndSend() {
       </AppNotice>
 
       <div v-if="step === 'form'" class="transfer__form">
+        <AppNotice v-if="staleReason" kind="warning">
+          <p>{{ staleReason }}</p>
+        </AppNotice>
+
         <div class="transfer__field">
           <label class="transfer__label" for="transfer-recipient">Their wallet address</label>
           <input

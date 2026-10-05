@@ -39,6 +39,14 @@ export function validateTransfer({
   }
   const lamports = parseSolToLamports(amountSol)
   if (lamports === null) {
+    // parseSolToLamports also returns null past 9 decimal places, which is a
+    // different, fixable mistake than typing something that is not a number.
+    if (/^\d+\.\d{10,}$/.test(amountSol.trim())) {
+      return {
+        ok: false,
+        reason: 'SOL amounts have at most 9 decimal places — please round it, like 0.001.',
+      }
+    }
     return { ok: false, reason: 'Please type the amount as a number, like 0.01.' }
   }
   if (lamports < MIN_TRANSFER_LAMPORTS) {
