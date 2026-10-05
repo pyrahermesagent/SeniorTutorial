@@ -15,14 +15,18 @@ const SUGGESTED_ENTRY = 'Anna pays Marco 2 SOL'
 const copies = ref<NotebookCopy[]>(createLedger())
 const draft = ref(SUGGESTED_ENTRY)
 const cheating = ref(false)
-const cheatDrafts = ref<string[]>([])
+const cheatTarget = ref<number | null>(null)
+const cheatDraft = ref('')
 const lastCheck = ref<'none' | 'agreed' | 'rejected'>('none')
 
 const hasEntries = computed(() => (copies.value[0]?.entries.length ?? 0) > 0)
 
 const statusLine = computed(() => {
+  if (cheating.value && cheatTarget.value === null) {
+    return 'Your turn: pick ONE notebook to cheat with — the others stay as they are.'
+  }
   if (cheating.value) {
-    return 'Your turn: change the newest line in any one notebook, then check what the others say.'
+    return `Change the newest line in notebook ${cheatTarget.value + 1}, then check what the others say.`
   }
   if (lastCheck.value === 'rejected') {
     const index = copies.value.findIndex((copy) => copy.status === 'rejected')
@@ -47,22 +51,33 @@ function add() {
 }
 
 function startCheating() {
-  cheatDrafts.value = copies.value.map((copy) => copy.entries[copy.entries.length - 1] ?? '')
   cheating.value = true
+  cheatTarget.value = null
+  cheatDraft.value = ''
+}
+
+function pickCheatTarget(index: number) {
+  const copy = copies.value[index]
+  if (!copy || copy.entries.length === 0) {
+    return
+  }
+  cheatTarget.value = index
+  cheatDraft.value = copy.entries[copy.entries.length - 1] ?? ''
 }
 
 function check() {
   let next = copies.value
-  copies.value.forEach((copy, index) => {
-    const original = copy.entries[copy.entries.length - 1]
-    const edited = cheatDrafts.value[index]
-    if (edited !== undefined && edited !== original) {
-      next = tamper(next, index, edited)
+  if (cheatTarget.value !== null) {
+    const copy = copies.value[cheatTarget.value]
+    const original = copy?.entries[copy.entries.length - 1]
+    if (original !== undefined && cheatDraft.value !== original) {
+      next = tamper(next, cheatTarget.value, cheatDraft.value)
     }
-  })
+  }
   next = resolveLedger(next)
   copies.value = next
   cheating.value = false
+  cheatTarget.value = null
   lastCheck.value = next.some((copy) => copy.status === 'rejected') ? 'rejected' : 'agreed'
 }
 </script>
@@ -104,8 +119,8 @@ function check() {
             :style="{ '--line-delay': `${index * 120}ms` }"
           >
             <input
-              v-if="cheating && entryIndex === copy.entries.length - 1"
-              v-model="cheatDrafts[index]"
+              v-if="cheating && cheatTarget === index && entryIndex === copy.entries.length - 1"
+              v-model="cheatDraft"
               class="ledger__cheat-input"
               type="text"
               :aria-label="`Change the newest line of notebook ${index + 1}`"
@@ -114,6 +129,16 @@ function check() {
           </li>
         </TransitionGroup>
         <p v-else class="ledger__empty">Empty so far</p>
+        <button
+          v-if="cheating"
+          type="button"
+          class="ledger__pick"
+          :class="{ 'ledger__pick--active': cheatTarget === index }"
+          :aria-pressed="cheatTarget === index"
+          @click="pickCheatTarget(index)"
+        >
+          {{ cheatTarget === index ? 'Cheating with this one' : 'Cheat with this notebook' }}
+        </button>
       </li>
     </ol>
 
@@ -261,6 +286,30 @@ function check() {
   margin: 0;
   font-size: var(--text-base);
   color: var(--color-secondary);
+}
+
+.ledger__pick {
+  min-height: 2.4rem; /* 48px touch target */
+  padding: var(--space-1) var(--space-2);
+  background-color: transparent;
+  border: 2px solid var(--color-ink);
+  border-radius: 12px;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.ledger__pick:hover {
+  background-color: color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
+.ledger__pick--active,
+.ledger__pick--active:hover {
+  background-color: var(--color-accent);
+  color: var(--color-ink); /* ink on amber — the only AA-safe pairing */
 }
 
 .ledger__status {
