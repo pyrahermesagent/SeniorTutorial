@@ -13,6 +13,7 @@ import {
   type SignatureBytes,
   type SignatureDictionary,
   type TransactionPartialSigner,
+  type TransactionSigner,
 } from '@solana/kit'
 import { getWallets } from '@wallet-standard/app'
 import type { Wallet, WalletAccount } from '@wallet-standard/base'
@@ -231,7 +232,20 @@ export function useWallet() {
     }
   }
 
-  async function sendInstructions(ixs: unknown[]): Promise<string> {
+  /*
+   * extraSigners: signers the wallet cannot produce — e.g. the stake
+   * challenge's fresh stake-account keypair, which must co-sign alongside the
+   * wallet. When present, the one-shot signAndSend path is skipped: the
+   * wallet-standard offers no way to hand it a partly-signed transaction, so
+   * the extra signature would be missing on-chain. The signTransaction
+   * fallback below routes through kit's signTransactionMessageWithSigners,
+   * which signs with every signer embedded in the instruction metas — the
+   * wallet co-signs for its own address, the keypair signs for itself.
+   */
+  async function sendInstructions(
+    ixs: unknown[],
+    extraSigners: TransactionSigner[] = [],
+  ): Promise<string> {
     const current = account.value
     const wallet = connectedWallet
     const walletAccount =
@@ -239,7 +253,10 @@ export function useWallet() {
     if (!current || !wallet || !walletAccount) throw new Error('No wallet connected')
     const chain: string = SOLANA_CHAIN_BY_CLUSTER[solana.cluster.value]
     try {
-      const signAndSend = getFeature<SignAndSendFeature>(wallet, 'solana:signAndSendTransaction')
+      const signAndSend =
+        extraSigners.length === 0
+          ? getFeature<SignAndSendFeature>(wallet, 'solana:signAndSendTransaction')
+          : undefined
       if (signAndSend) {
         const latestBlockhash = await solana.getLatestBlockhash()
         const message = pipe(
