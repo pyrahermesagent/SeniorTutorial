@@ -1,6 +1,7 @@
 import type { FunctionalComponent } from 'vue'
 import {
   ArrowLeft,
+  ArrowLeftRight,
   ArrowRight,
   BookOpen,
   Check,
@@ -15,6 +16,7 @@ import {
   Info,
   KeyRound,
   Landmark,
+  Layers,
   LoaderCircle,
   LogOut,
   Menu,
@@ -24,10 +26,12 @@ import {
   Play,
   RefreshCw,
   Rocket,
+  Send,
   Server,
   ServerOff,
   ShieldCheck,
   Smartphone,
+  Sparkles,
   TriangleAlert,
   Trophy,
   Wallet,
@@ -73,4 +77,8 @@ export const iconMap: Record<string, FunctionalComponent> = {
   monitor: Monitor,
   smartphone: Smartphone,
   droplets: Droplets,
+  send: Send,
+  'arrow-left-right': ArrowLeftRight,
+  layers: Layers,
+  sparkles: Sparkles,
 }

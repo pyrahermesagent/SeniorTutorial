@@ -36,6 +36,10 @@ export function useProgress() {
     persist()
   }
 
+  function isChallengeDone(id: ChallengeId) {
+    return state.value.challengesDone.includes(id)
+  }
+
   function saveQuizScore(slug: string, score: number, total: number) {
     state.value = applyQuizScore(state.value, slug, score, total)
     persist()
@@ -55,6 +59,7 @@ export function useProgress() {
     state,
     markLessonDone,
     markChallengeDone,
+    isChallengeDone,
     saveQuizScore,
     setCluster,
     setLastWallet,
