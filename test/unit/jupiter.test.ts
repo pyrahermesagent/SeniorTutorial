@@ -119,6 +119,26 @@ describe('fetchQuote', () => {
     expect(failure.kind).toBe('unavailable')
   })
 
+  it('throws unavailable on a garbage-200 whose amounts are not digit strings', async () => {
+    // These amounts feed BigInt at display time — without validation this is
+    // a render-time TypeError instead of a calm quote failure.
+    const garbageBodies = [
+      { ...quoteResponsePayload(), outAmount: 'abc' },
+      { ...quoteResponsePayload(), outAmount: '1.5' },
+      { ...quoteResponsePayload(), outAmount: '' },
+      { ...quoteResponsePayload(), otherAmountThreshold: 'NaN' },
+      { ...quoteResponsePayload(), otherAmountThreshold: 1199158 },
+    ]
+    for (const body of garbageBodies) {
+      fetchMock.mockResolvedValueOnce(okJson(body))
+      const failure = await fetchQuote(QUOTE_PARAMS).catch((error) => error)
+      expect(failure, JSON.stringify(body.outAmount ?? body.otherAmountThreshold)).toBeInstanceOf(
+        JupiterError,
+      )
+      expect(failure.kind).toBe('unavailable')
+    }
+  })
+
   it('throws unavailable when the response is not JSON', async () => {
     fetchMock.mockResolvedValue(new Response('<html>oops</html>', { status: 200 }))
     const failure = await fetchQuote(QUOTE_PARAMS).catch((error) => error)

@@ -4,6 +4,7 @@ import type { Wallet, WalletAccount } from '@wallet-standard/base'
 import { getBase58Decoder } from '@solana/kit'
 import {
   SOLANA_CHAIN_BY_CLUSTER,
+  UnconfirmedBroadcastError,
   classifySendError,
   isSolanaStandardWallet,
   sendVersionedTransactionViaWallet,
@@ -277,5 +278,22 @@ describe('sendVersionedTransactionViaWallet', () => {
     expect(sendSignedTransaction).not.toHaveBeenCalled()
     // …and the existing classifier agrees it is a rejection.
     expect(classifySendError(rejection)).toBe('rejected')
+  })
+})
+
+
+describe('UnconfirmedBroadcastError', () => {
+  it('carries the signature and whether the failure was on-chain', () => {
+    const timeout = new UnconfirmedBroadcastError('5VERsig', false)
+    expect(timeout).toBeInstanceOf(Error)
+    expect(timeout.name).toBe('UnconfirmedBroadcastError')
+    expect(timeout.signature).toBe('5VERsig')
+    expect(timeout.failedOnChain).toBe(false)
+    const onChain = new UnconfirmedBroadcastError('5VERsig', true)
+    expect(onChain.failedOnChain).toBe(true)
+  })
+
+  it('classifies as a real failure, never as a user rejection', () => {
+    expect(classifySendError(new UnconfirmedBroadcastError('5VERsig', false))).toBe('failed')
   })
 })

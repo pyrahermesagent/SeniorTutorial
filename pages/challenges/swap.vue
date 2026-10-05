@@ -10,7 +10,8 @@ import TxStatus, { type TxState } from '../../components/TxStatus.vue'
 import { useProgress } from '../../composables/useProgress'
 import { useSolana } from '../../composables/useSolana'
 import { useWallet } from '../../composables/useWallet'
-import { formatSol } from '../../utils/cluster'
+import { formatSol, explorerTxUrl } from '../../utils/cluster'
+import { UnconfirmedBroadcastError } from '../../utils/wallets'
 import {
   DEFAULT_SLIPPAGE_BPS,
   JupiterError,
@@ -43,6 +44,10 @@ const txState = ref<TxState>('idle')
 const signature = ref<string>()
 const failureCopy = ref<string>()
 const staleReason = ref<string | null>(null)
+// Post-broadcast uncertainty: the swap reached the network but its outcome is
+// failed-on-chain or unknown. Shown with the signature, never as "nothing
+// was sent" — that lie would invite a double-swap with real money.
+const unconfirmed = ref<{ signature: string; failedOnChain: boolean } | null>(null)
 
 async function refreshBalance() {
   const address = account.value?.address
@@ -67,6 +72,7 @@ function resetFlow() {
   staleReason.value = null
   quote.value = null
   quoteFailed.value = false
+  unconfirmed.value = null
 }
 
 watch(
@@ -160,7 +166,28 @@ function startPracticeReview() {
   step.value = 'confirm'
 }
 
+const unconfirmedCopy = computed(() =>
+  unconfirmed.value?.failedOnChain
+    ? 'Your swap reached the network but could not be completed. Your SOL should still be in your wallet, minus a tiny network fee — check the explorer link to be sure.'
+    : "We sent your swap, but we couldn't confirm it yet. Please check your wallet — or the explorer link — before trying again.",
+)
+
+const unconfirmedExplorerUrl = computed(() =>
+  unconfirmed.value ? explorerTxUrl(unconfirmed.value.signature, cluster.value) : '',
+)
+
+const retryCopy = computed(() =>
+  mode.value === 'practice' ? 'Go back and try again' : 'Go back and get a fresh rate',
+)
+
 function backToConfirm() {
+  if (mode.value === 'jupiter') {
+    // Jupiter quotes expire: retrying a swap re-POSTs quoteResponse, so the
+    // only honest retry is a fresh rate. Practice wraps have no quote, so
+    // their confirm card is safe to restore.
+    resetFlow()
+    return
+  }
   step.value = 'confirm'
   txState.value = 'idle'
 }
@@ -193,6 +220,7 @@ async function sendTransaction<T>(
   step.value = 'sending'
   signature.value = undefined
   failureCopy.value = undefined
+  unconfirmed.value = null
   txState.value = 'building'
   try {
     const prepared = await prepare()
@@ -204,6 +232,17 @@ async function sendTransaction<T>(
   } catch (error) {
     if (error === 'rejected') {
       txState.value = 'cancelled'
+      return
+    }
+    if (error instanceof UnconfirmedBroadcastError) {
+      // The swap was broadcast — outcome failed-on-chain or unknown. Show the
+      // dedicated panel (with explorer link) instead of a failure that would
+      // falsely claim nothing was sent. The challenge is NOT marked done.
+      unconfirmed.value = {
+        signature: error.signature,
+        failedOnChain: error.failedOnChain,
+      }
+      txState.value = 'idle'
       return
     }
     failureCopy.value = toPlainSendError(error)
@@ -395,17 +434,37 @@ function confirm() {
       </AppCard>
 
       <div v-else class="swap__sending">
-        <TxStatus :state="txState" :signature="signature" :error="failureCopy">
-          <template #retry>
-            <AppButton variant="ghost" @click="backToConfirm">Go back and try again</AppButton>
-          </template>
-        </TxStatus>
-        <AppButton v-if="txState === 'failed'" variant="ghost" @click="backToConfirm">
-          Go back and try again
-        </AppButton>
-        <AppButton v-if="txState === 'success'" variant="secondary" @click="sendAnother">
-          {{ mode === 'practice' ? 'Wrap more SOL' : 'Swap again' }}
-        </AppButton>
+        <template v-if="unconfirmed">
+          <AppNotice kind="warning">
+            <p>
+              {{ unconfirmedCopy }}
+              <a
+                :href="unconfirmedExplorerUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="swap__explorer-link"
+              >
+                See it on the Solana Explorer
+              </a>
+            </p>
+          </AppNotice>
+          <AppButton variant="ghost" @click="resetFlow">Go back to the start</AppButton>
+        </template>
+        <template v-else>
+          <TxStatus :state="txState" :signature="signature" :error="failureCopy">
+            <template #retry>
+              <AppButton variant="ghost" @click="backToConfirm">
+                {{ retryCopy }}
+              </AppButton>
+            </template>
+          </TxStatus>
+          <AppButton v-if="txState === 'failed'" variant="ghost" @click="backToConfirm">
+            {{ retryCopy }}
+          </AppButton>
+          <AppButton v-if="txState === 'success'" variant="secondary" @click="sendAnother">
+            {{ mode === 'practice' ? 'Wrap more SOL' : 'Swap again' }}
+          </AppButton>
+        </template>
       </div>
     </ChallengeShell>
   </div>
@@ -509,6 +568,12 @@ function confirm() {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.swap__explorer-link {
+  display: inline-block;
+  margin-top: var(--space-1);
+  font-weight: 700;
 }
 
 .swap__recap {

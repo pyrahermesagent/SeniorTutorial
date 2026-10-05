@@ -129,3 +129,28 @@ export async function sendVersionedTransactionViaWallet({
   if (!output) throw new Error('The wallet did not return a signed transaction')
   return await sendSignedTransaction(output.signedTransaction)
 }
+
+
+/*
+ * Thrown only AFTER a transaction was broadcast: the network has it, we hold
+ * its signature, but the outcome is failed-on-chain or simply unknown. Pages
+ * must never map this to "nothing was sent" — with a real-money flow that lie
+ * invites a double-send. `failedOnChain` distinguishes "the network processed
+ * it and it failed" (fee spent, effects reverted) from "we stopped hearing
+ * back" (state genuinely unknown — check the explorer).
+ */
+export class UnconfirmedBroadcastError extends Error {
+  readonly signature: string
+  readonly failedOnChain: boolean
+
+  constructor(signature: string, failedOnChain: boolean) {
+    super(
+      failedOnChain
+        ? 'The transaction failed on the network.'
+        : 'The transaction could not be confirmed yet.',
+    )
+    this.name = 'UnconfirmedBroadcastError'
+    this.signature = signature
+    this.failedOnChain = failedOnChain
+  }
+}

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Cluster } from '../../utils/cluster'
+import { UnconfirmedBroadcastError } from '../../utils/wallets'
 
 const mocks = await vi.hoisted(async () => {
   const { ref } = await import('vue')
@@ -230,7 +231,7 @@ describe('swap challenge page', () => {
     expect(mocks.markChallengeDone).not.toHaveBeenCalled()
   })
 
-  it('returns to the quote card when the learner cancels in their wallet', async () => {
+  it('after a cancel, retries only with a fresh quote — never a stale one', async () => {
     mocks.sendVersionedTransaction.mockRejectedValueOnce('rejected')
     const wrapper = await mountConnected('mainnet-beta')
     await fillAmount(wrapper, '0.05')
@@ -241,7 +242,72 @@ describe('swap challenge page', () => {
 
     expect(wrapper.text()).toContain('You cancelled — nothing was sent.')
     expect(mocks.markChallengeDone).not.toHaveBeenCalled()
-    await buttonByText(wrapper, 'Go back and try again').trigger('click')
+
+    // Jupiter quotes expire, so "retry" is a fresh rate, not the old card.
+    await buttonByText(wrapper, 'Go back and get a fresh rate').trigger('click')
+    expect(buttonByText(wrapper, 'See the rate').exists()).toBe(true)
+
+    fetchMock.mockClear()
+    await buttonByText(wrapper, 'See the rate').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(1) // a brand-new quote was fetched
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('/quote')
     expect(wrapper.text()).toContain('Your 0.05 SOL buys about 7.42 USDC')
+  })
+
+  it('restores the review card when the learner cancels a practice wrap', async () => {
+    mocks.sendInstructions.mockRejectedValueOnce('rejected')
+    const wrapper = await mountConnected('devnet')
+    await toConfirmStep(wrapper)
+    await buttonByText(wrapper, 'Yes — wrap it now').trigger('click')
+    await settle()
+
+    expect(wrapper.text()).toContain('You cancelled — nothing was sent.')
+    expect(mocks.markChallengeDone).not.toHaveBeenCalled()
+    // Practice wraps have no expiring quote: the review card comes back.
+    await buttonByText(wrapper, 'Go back and try again').trigger('click')
+    expect(wrapper.text()).toContain('You are wrapping 0.05 SOL into wSOL')
+  })
+
+  it('never claims "nothing was sent" when the broadcast cannot be confirmed', async () => {
+    mocks.sendVersionedTransaction.mockRejectedValueOnce(
+      new UnconfirmedBroadcastError('5VERUncertainSignature1111111111111111111111111111', false),
+    )
+    const wrapper = await mountConnected('mainnet-beta')
+    await fillAmount(wrapper, '0.05')
+    await buttonByText(wrapper, 'See the rate').trigger('click')
+    await flushPromises()
+    await buttonByText(wrapper, 'Yes — swap now').trigger('click')
+    await settle()
+
+    const text = wrapper.text()
+    expect(text).toContain("We sent your swap, but we couldn't confirm it yet.")
+    expect(text).not.toContain('nothing was sent')
+    expect(text).not.toContain('did not go through')
+    // The signature is right there to check.
+    const link = wrapper.find('a[href*="explorer.solana.com/tx/5VERUncertainSignature"]')
+    expect(link.exists()).toBe(true)
+    expect(mocks.markChallengeDone).not.toHaveBeenCalled()
+
+    await buttonByText(wrapper, 'Go back to the start').trigger('click')
+    expect(buttonByText(wrapper, 'See the rate').exists()).toBe(true)
+  })
+
+  it('tells the truth when the network processed the swap and it failed', async () => {
+    mocks.sendVersionedTransaction.mockRejectedValueOnce(
+      new UnconfirmedBroadcastError('5VEROnChainFailure1111111111111111111111111111111', true),
+    )
+    const wrapper = await mountConnected('mainnet-beta')
+    await fillAmount(wrapper, '0.05')
+    await buttonByText(wrapper, 'See the rate').trigger('click')
+    await flushPromises()
+    await buttonByText(wrapper, 'Yes — swap now').trigger('click')
+    await settle()
+
+    const text = wrapper.text()
+    expect(text).toContain('Your swap reached the network but could not be completed.')
+    expect(text).not.toContain('nothing was sent')
+    expect(wrapper.find('a[href*="explorer.solana.com/tx/5VEROnChainFailure"]').exists()).toBe(true)
+    expect(mocks.markChallengeDone).not.toHaveBeenCalled()
   })
 })

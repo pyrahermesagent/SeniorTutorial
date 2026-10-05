@@ -49,8 +49,11 @@ export interface JupiterQuote {
   quoteResponse: Record<string, unknown>
 }
 
-async function jupiterFetch(url: string, timeoutMs: number, init?: RequestInit) {
-  let response: Response
+function isDigitString(value: unknown): value is string {
+  return typeof value === 'string' && /^\d+$/.test(value)
+}
+
+async function jupiterFetch(url: string, timeoutMs: number, init?: RequestInit) {  let response: Response
   try {
     // fetch() itself receives the timeout signal; hanging connections are
     // turned into the same DOMException TimeoutError as slow responses.
@@ -85,8 +88,10 @@ export async function fetchQuote(
   if (
     data === null ||
     typeof data !== 'object' ||
-    typeof data.outAmount !== 'string' ||
-    typeof data.otherAmountThreshold !== 'string'
+    // The amounts feed BigInt conversion at display time — a garbage-200
+    // ('abc', '1.5', '') must die here as 'unavailable', not in the render.
+    !isDigitString(data.outAmount) ||
+    !isDigitString(data.otherAmountThreshold)
   ) {
     throw new JupiterError('unavailable', 'response did not look like a quote')
   }

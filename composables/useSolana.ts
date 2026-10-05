@@ -28,6 +28,7 @@ import {
 import { computed } from 'vue'
 import { useProgress } from './useProgress'
 import { CLUSTERS, isValidSolanaAddress, parseSolToLamports, type Cluster } from '../utils/cluster'
+import { UnconfirmedBroadcastError } from '../utils/wallets'
 
 type AirdropResult = { sig: string } | { error: 'rate-limited' | 'unavailable' }
 
@@ -146,16 +147,18 @@ export function useSolana() {
       signedTransaction,
     ) as Base64EncodedWireTransaction
     const signature = await rpc.sendTransaction(wireTransaction, { encoding: 'base64' }).send()
+    // Everything past this point is POST-broadcast: failures must carry the
+    // signature so pages can never claim "nothing was sent".
     const deadline = Date.now() + CONFIRMATION_TIMEOUT_MS
     for (;;) {
       const { value } = await rpc.getSignatureStatuses([signature]).send()
       const status = value[0]
-      if (status?.err) throw new Error('The transaction failed on the network.')
+      if (status?.err) throw new UnconfirmedBroadcastError(signature, true)
       if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') {
         return signature
       }
       if (Date.now() > deadline) {
-        throw new Error('The transaction could not be confirmed yet.')
+        throw new UnconfirmedBroadcastError(signature, false)
       }
       await new Promise((resolve) => setTimeout(resolve, CONFIRMATION_POLL_INTERVAL_MS))
     }
