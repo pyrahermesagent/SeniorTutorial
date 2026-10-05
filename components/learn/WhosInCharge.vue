@@ -47,7 +47,7 @@ const networkKey = ref(0)
     <section>
       <h2>Why this matters to you</h2>
       <p>
-        A system with one boss has one off-switch. A system with over a thousand independent
+        A system with one boss has one off-switch. A system with hundreds of independent
         keepers has none: no single company can be switched off to stop it, and no one can
         quietly change the rules — the other keepers would simply refuse to go along.
       </p>

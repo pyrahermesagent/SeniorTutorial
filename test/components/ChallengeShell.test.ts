@@ -36,11 +36,19 @@ const walletButtonStub = {
   template: '<button type="button" class="wallet-button-stub">Connect wallet</button>',
 }
 
-function mountShell(slotContent = '<p class="challenge-ui">Challenge UI goes here</p>') {
+const nuxtLinkStub = {
+  props: ['to'],
+  template: '<a :href="to"><slot /></a>',
+}
+
+function mountShell(
+  slotContent = '<p class="challenge-ui">Challenge UI goes here</p>',
+  challenge: ChallengeId = 'transfer',
+) {
   return mount(ChallengeShell, {
-    props: { challenge: 'transfer', goal: 'Send a little SOL to another wallet.', estCost: 'less than a penny' },
+    props: { challenge, goal: 'Send a little SOL to another wallet.', estCost: 'less than a penny' },
     slots: { default: slotContent },
-    global: { stubs: { WalletButton: walletButtonStub } },
+    global: { stubs: { WalletButton: walletButtonStub, NuxtLink: nuxtLinkStub } },
   })
 }
 
@@ -119,5 +127,30 @@ describe('ChallengeShell', () => {
     const wrapper = mountShell()
     await wrapper.vm.$nextTick()
     expect(wrapper.find('.app-notice--warning').exists()).toBe(false)
+  })
+
+  describe('Need help? link', () => {
+    const cases: { challenge: ChallengeId; href: string; text: string }[] = [
+      {
+        challenge: 'transfer',
+        href: '/learn/wallets-and-keys',
+        text: 'New to wallets? Review the wallet lesson',
+      },
+      { challenge: 'swap', href: '/glossary#stablecoin', text: 'What is a stablecoin?' },
+      { challenge: 'stake', href: '/learn/whos-in-charge', text: 'Why staking matters' },
+      { challenge: 'memecoin', href: '/glossary#memecoin', text: 'What is a memecoin?' },
+    ]
+
+    for (const { challenge, href, text } of cases) {
+      it(`points ${challenge} at ${href}`, () => {
+        const wrapper = mountShell(undefined, challenge)
+        // Visible in the prerendered markup — before any wallet connects.
+        expect(wrapper.text()).toContain('Need help?')
+        const link = wrapper.find('.challenge-shell__help a')
+        expect(link.exists()).toBe(true)
+        expect(link.text()).toContain(text)
+        expect(link.attributes('href')).toBe(href)
+      })
+    }
   })
 })

@@ -36,7 +36,7 @@ describe('NodeNetworkSim', () => {
     expect(centralStatus(wrapper).text()).not.toContain('System down')
     expect(meshStatus(wrapper).text()).toContain('Still running — 8 of 8 computers working')
     expect(wrapper.find('.network-sim__solana').text()).toContain(
-      'Solana has over 1,000 independent computers',
+      'Solana has hundreds of independent computers',
     )
   })
 

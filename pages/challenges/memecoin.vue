@@ -420,6 +420,11 @@ async function confirmAndCreate() {
             <span class="memecoin__preview-symbol">{{ previewSymbol }}</span>
           </span>
         </div>
+        <p class="memecoin__hint">
+          On Solana your coin keeps its name and symbol — the picture lives here in the app.
+          Wallets cannot show it: the coin's on-chain information holds about 200 characters,
+          and a picture cannot fit in that.
+        </p>
 
         <p v-if="formProblem" class="memecoin__problem" role="alert">{{ formProblem }}</p>
         <p v-else-if="solProblem" class="memecoin__problem" role="alert">{{ solProblem }}</p>

@@ -45,8 +45,8 @@ const statsKey = ref(0)
     <section>
       <h2>Running day and night for years</h2>
       <p>
-        Solana has been running day and night for years, kept going by more than a
-        thousand independent validators around the world. No holidays, no maintenance
+        Solana has been running day and night for years, kept going by hundreds of
+        independent validators around the world. No holidays, no maintenance
         windows, no head office that can pull the plug — the live numbers on this page
         are being produced right now, while you read this.
       </p>

@@ -102,7 +102,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Validator',
     slug: 'validator',
     definition:
-      'One of the independent computers that keep the network honest. Validators check every transaction and write it into the shared notebook — with over a thousand of them checking each other\'s work, no one can cheat.',
+      'One of the independent computers that keep the network honest. Validators check every transaction and write it into the shared notebook — with hundreds of them checking each other\'s work, no one can cheat.',
   },
   {
     term: 'Wallet',

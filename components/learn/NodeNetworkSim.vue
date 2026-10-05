@@ -154,7 +154,7 @@ function linkDead(link: [number, number]): boolean {
     </div>
 
     <p class="network-sim__solana">
-      Solana has over 1,000 independent computers like these. No single one can be switched
+      Solana has hundreds of independent computers like these. No single one can be switched
       off to stop it.
     </p>
   </div>

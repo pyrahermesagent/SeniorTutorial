@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED, SolanaError } from '@solana/kit'
 import type { Cluster } from '../../utils/cluster'
 
 const mocks = await vi.hoisted(async () => {
@@ -151,6 +152,37 @@ describe('transfer challenge page', () => {
     expect(alert.exists()).toBe(true)
     expect(alert.text()).toContain('does not have quite enough SOL')
     expect(reviewButton(wrapper).attributes('disabled')).toBeDefined()
+  })
+
+  it('tells the truth when the broadcast raced the blockhash expiry', async () => {
+    // The signed transfer WAS sent; confirmation simply raced the blockhash
+    // expiry. The copy must point at the wallet activity tab — never claim
+    // "nothing was sent", which would invite a double-send.
+    mocks.sendInstructions.mockRejectedValueOnce(
+      new SolanaError(SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED),
+    )
+    const wrapper = await mountConnected()
+    await fillForm(wrapper, RECIPIENT, '0.01')
+    await reviewButton(wrapper).trigger('click')
+    const confirm = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Yes — send it now'))!
+    await confirm.trigger('click')
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('Your transfer was sent to the network')
+    expect(text).toContain('taking longer than expected to confirm')
+    expect(text).toContain('activity tab')
+    expect(text).not.toContain('nothing was sent')
+    expect(text).not.toContain('did not go through')
+    expect(mocks.markChallengeDone).not.toHaveBeenCalled()
+
+    // The learner is not stuck: the way back to the details is right there.
+    const back = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Go back and check the details'))
+    expect(back, 'way back to the review card').toBeDefined()
   })
 
   it('restores the review step when the learner cancels in their wallet', async () => {

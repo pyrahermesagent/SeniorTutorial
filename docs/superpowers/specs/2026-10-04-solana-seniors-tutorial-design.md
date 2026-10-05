@@ -97,7 +97,8 @@ lesson is a wall of text. Progress is saved to localStorage.
 3. **Who's in charge? (decentralization)** — Interactive: two diagrams, one
    central server vs a network of independent nodes; user "unplugs" servers
    (taps them) and sees the centralized system fail while the decentralized
-   network keeps running. Solana stats: ~1,000+ independent validators.
+   network keeps running. Solana stats: hundreds of independent validators
+   (updated 2026-10-05: live count ≈685).
 4. **Why Solana?** — Speed, cost, uptime. Interactive: live mainnet TPS and
    slot time fetched from RPC at view time; fee calculator slider (send $X,
    see fee in USD vs typical bank/wire fee).

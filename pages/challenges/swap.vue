@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { address as toAddress } from '@solana/kit'
+import {
+  SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED,
+  address as toAddress,
+  isSolanaError,
+} from '@solana/kit'
 import AppButton from '../../components/AppButton.vue'
 import AppCard from '../../components/AppCard.vue'
 import AppNotice from '../../components/AppNotice.vue'
@@ -202,6 +206,12 @@ function sendAnother() {
 }
 
 function toPlainSendError(error: unknown): string {
+  if (isSolanaError(error, SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED)) {
+    // The signed transaction WAS broadcast; confirmation simply raced the
+    // blockhash expiry. Never claim "nothing was sent" here — that lie
+    // invites a double-swap with real money.
+    return `Your ${mode.value === 'practice' ? 'wrap' : 'swap'} was sent to the network, but it is taking longer than expected to confirm. Please check your wallet\u2019s activity tab before trying again — if the transaction shows up there, it went through.`
+  }
   if (error instanceof JupiterError) {
     return 'We could not prepare this swap right now — nothing was sent. Please try again in a moment.'
   }
@@ -313,6 +323,10 @@ function confirm() {
             <p class="swap__recap-line">
               On the real network (Mainnet) that wrap happens automatically inside the swap, and
               your SOL comes back as the coin you picked — for example USDC.
+            </p>
+            <p class="swap__recap-line">
+              Your practice SOL is now wSOL, and on the practice network that's fine — think of it
+              as play money in a different envelope.
             </p>
           </template>
           <template v-else>

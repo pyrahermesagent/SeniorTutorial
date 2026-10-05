@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { address as toAddress } from '@solana/kit'
+import {
+  SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED,
+  address as toAddress,
+  isSolanaError,
+} from '@solana/kit'
 import AppButton from '../../components/AppButton.vue'
 import AppCard from '../../components/AppCard.vue'
 import AppNotice from '../../components/AppNotice.vue'
@@ -116,6 +120,12 @@ function sendAnother() {
 }
 
 function toPlainSendError(error: unknown): string {
+  if (isSolanaError(error, SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED)) {
+    // The signed transaction WAS broadcast; confirmation simply raced the
+    // blockhash expiry. Never claim "nothing was sent" here — that lie
+    // invites a double-send with real money.
+    return 'Your transfer was sent to the network, but it is taking longer than expected to confirm. Please check your wallet\u2019s activity tab before trying again — if the transaction shows up there, it went through.'
+  }
   if (error instanceof Error && /insufficient/i.test(error.message)) {
     return 'Your wallet did not have quite enough SOL for this transfer, so nothing was sent.'
   }

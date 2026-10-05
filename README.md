@@ -18,7 +18,7 @@ Senior Solana School is a fully static site (no backend) built with Nuxt 4. It w
 
 ## Safety
 
-- The app **never touches private keys**. All signing happens inside the user's own wallet (Solflare/Phantom) through the Wallet Standard.
+- **Your wallet's keys never leave your wallet.** All signing of your own transactions happens inside the user's own wallet (Solflare/Phantom) through the Wallet Standard. (The app does generate small one-time throwaway accounts — like a fresh stake account or a new coin's mint — which sign inside your browser and are never the keys to your funds.)
 - Seniors should **practice on Devnet first** using the free faucet, then switch to Mainnet only when comfortable.
 
 ## Tech stack

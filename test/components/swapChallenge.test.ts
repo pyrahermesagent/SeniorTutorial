@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED, SolanaError } from '@solana/kit'
 import type { Cluster } from '../../utils/cluster'
 import { UnconfirmedBroadcastError } from '../../utils/wallets'
 
@@ -162,8 +163,11 @@ describe('swap challenge page', () => {
     expect(ixs).toHaveLength(3)
     expect(mocks.sendVersionedTransaction).not.toHaveBeenCalled()
     expect(mocks.markChallengeDone).toHaveBeenCalledWith('swap')
-    expect(wrapper.text()).toContain('Well done — it went through!')
-    expect(wrapper.text()).toContain('exactly what a swap does with your SOL behind the scenes')
+    const done = wrapper.text()
+    expect(done).toContain('Well done — it went through!')
+    expect(done).toContain('exactly what a swap does with your SOL behind the scenes')
+    // The recap closes by reassuring the learner that SOL → wSOL is fine on Devnet.
+    expect(done).toContain('play money in a different envelope')
   })
 
   it('swaps on Mainnet: quote in plain English, confirm, done', async () => {
@@ -267,6 +271,27 @@ describe('swap challenge page', () => {
     // Practice wraps have no expiring quote: the review card comes back.
     await buttonByText(wrapper, 'Go back and try again').trigger('click')
     expect(wrapper.text()).toContain('You are wrapping 0.05 SOL into wSOL')
+  })
+
+  it('tells the truth when the practice wrap raced the blockhash expiry', async () => {
+    // The signed wrap WAS broadcast; confirmation simply raced the blockhash
+    // expiry. The copy must point at the wallet activity tab — never claim
+    // "nothing was sent", which would invite a second wrap.
+    mocks.sendInstructions.mockRejectedValueOnce(
+      new SolanaError(SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED),
+    )
+    const wrapper = await mountConnected('devnet')
+    await toConfirmStep(wrapper)
+    await buttonByText(wrapper, 'Yes — wrap it now').trigger('click')
+    await settle()
+
+    const text = wrapper.text()
+    expect(text).toContain('Your wrap was sent to the network')
+    expect(text).toContain('taking longer than expected to confirm')
+    expect(text).toContain('activity tab')
+    expect(text).not.toContain('nothing was sent')
+    expect(text).not.toContain('did not go through')
+    expect(mocks.markChallengeDone).not.toHaveBeenCalled()
   })
 
   it('never claims "nothing was sent" when the broadcast cannot be confirmed', async () => {

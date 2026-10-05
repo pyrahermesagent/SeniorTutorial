@@ -108,6 +108,17 @@ const amountProblem = computed(() => {
   return validation.value.reason
 })
 
+// A balance shortage on the practice network has a free fix — the faucet —
+// so when that specific reason shows on Devnet, point at it. Mainnet stays
+// quiet: real-money top-ups are the Get Started page's own careful flow.
+const showFaucetHint = computed(
+  () =>
+    cluster.value === 'devnet' &&
+    amountProblem.value !== null &&
+    !validation.value.ok &&
+    validation.value.balanceShort === true,
+)
+
 const canReview = computed(
   () => balance.value !== null && validation.value.ok && selectedValidator.value !== undefined,
 )
@@ -280,6 +291,11 @@ async function confirmAndStake() {
             On Mainnet that 1 SOL is real money. Practicing first? On the Devnet practice network
             you can get free practice SOL from the
             <NuxtLink to="/start" class="stake__link">Get Started page</NuxtLink>.
+          </p>
+          <p v-if="showFaucetHint" class="stake__hint">
+            On the practice network, use the faucet on the
+            <NuxtLink to="/start" class="stake__link">Get Started page</NuxtLink>
+            — you may need two free drips.
           </p>
         </div>
 

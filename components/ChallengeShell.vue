@@ -18,10 +18,10 @@ import type { ChallengeId } from '../utils/progress'
  * isChallengeDone(challenge) to show the completion tick.
  *
  * SSR contract: the prerendered HTML always shows the not-connected state
- * (goal + estimate + connect notice) and no completion tick. The connected
- * challenge UI, the tick, and any Mainnet warning are revealed after mount
- * via the settled ref, so hydration matches the static markup (the same
- * pattern as NetworkToggle).
+ * (goal + estimate + help link + connect notice) and no completion tick. The
+ * connected challenge UI, the tick, and any Mainnet warning are revealed
+ * after mount via the settled ref, so hydration matches the static markup
+ * (the same pattern as NetworkToggle).
  *
  * Slots: the default slot is the challenge UI (shown only when a wallet is
  * connected); the optional `recap` slot lets a page add a summary card
@@ -39,6 +39,20 @@ const { account } = useWallet()
 const { cluster } = useSolana()
 const { isChallengeDone } = useProgress()
 
+/*
+ * Spec §4 persistent chrome: every challenge screen carries a quiet
+ * "Need help?" link under the goal line, pointing at the lesson or glossary
+ * entry that explains what the learner is about to do.
+ */
+const HELP_LINKS: Record<ChallengeId, { to: string; text: string }> = {
+  transfer: { to: '/learn/wallets-and-keys', text: 'New to wallets? Review the wallet lesson' },
+  swap: { to: '/glossary#stablecoin', text: 'What is a stablecoin?' },
+  stake: { to: '/learn/whos-in-charge', text: 'Why staking matters' },
+  memecoin: { to: '/glossary#memecoin', text: 'What is a memecoin?' },
+}
+
+const helpLink = computed(() => HELP_LINKS[props.challenge])
+
 const settled = ref(false)
 onMounted(() => {
   settled.value = true
@@ -54,6 +68,10 @@ const showMainnetWarning = computed(() => settled.value && cluster.value === 'ma
     <header class="challenge-shell__header">
       <p class="challenge-shell__goal">{{ goal }}</p>
       <p class="challenge-shell__cost">Estimated cost: {{ estCost }}</p>
+      <p class="challenge-shell__help">
+        Need help?
+        <NuxtLink :to="helpLink.to" class="challenge-shell__help-link">{{ helpLink.text }}</NuxtLink>
+      </p>
       <p v-if="showDone" class="challenge-shell__done">
         <AppIcon name="circle-check" :size="24" />
         You've finished this challenge — well done!
@@ -105,6 +123,18 @@ const showMainnetWarning = computed(() => settled.value && cluster.value === 'ma
   margin: 0;
   font-size: var(--text-base);
   color: var(--color-secondary);
+}
+
+.challenge-shell__help {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-secondary);
+}
+
+.challenge-shell__help-link {
+  display: inline-block;
+  padding: var(--space-1) 0;
+  font-weight: 700;
 }
 
 .challenge-shell__done {

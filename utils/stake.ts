@@ -51,7 +51,11 @@ export function getStakeRent(): bigint {
 export const MIN_STAKE_LAMPORTS = 1_000_000_000n // 1 SOL
 export const STAKE_FEE_LAMPORTS = 10_000n
 
-export type StakeAmountValidation = { ok: true; lamports: bigint } | { ok: false; reason: string }
+export type StakeAmountValidation =
+  | { ok: true; lamports: bigint }
+  // `balanceShort` flags the wallet-balance failure specifically, so pages can
+  // attach balance-specific help (the devnet faucet) without string-matching.
+  | { ok: false; reason: string; balanceShort?: boolean }
 
 export function validateStakeAmount({
   amountSol,
@@ -81,6 +85,7 @@ export function validateStakeAmount({
       ok: false,
       reason:
         'Your wallet does not have quite enough SOL for this amount plus the small account setup cost.',
+      balanceShort: true,
     }
   }
   return { ok: true, lamports }
