@@ -247,7 +247,7 @@ async function confirmAndCreate() {
     <ChallengeShell
       challenge="memecoin"
       goal="Create your very own token on Solana — a real memecoin, made by you"
-      est-cost="About 0.007 SOL for the one-time setup and fees"
+      est-cost="About 0.017 SOL (most of it is the one-time cost of registering your coin's name on-chain)"
     >
       <template v-if="txState === 'success' && createdMintAddress" #recap>
         <div class="memecoin__recap">
@@ -320,7 +320,10 @@ async function confirmAndCreate() {
             autocomplete="off"
             maxlength="48"
           />
-          <p class="memecoin__hint">Up to 32 letters — for example “Grandma Coin”.</p>
+          <p class="memecoin__hint">
+            Up to 32 characters — for example “Grandma Coin”. Accented characters and emoji
+            count as more than one.
+          </p>
         </div>
 
         <div class="memecoin__field">
@@ -335,7 +338,7 @@ async function confirmAndCreate() {
             maxlength="16"
           />
           <p class="memecoin__hint">
-            The short ticker, up to 10 letters — for example “GRAN”.
+            The short ticker, up to 10 characters — for example “GRAN”.
           </p>
         </div>
 
@@ -460,7 +463,8 @@ async function confirmAndCreate() {
           <div class="memecoin__detail">
             <dt class="memecoin__term">One-time setup cost</dt>
             <dd class="memecoin__value">
-              About {{ setupCostText }} SOL — account setup plus the tiny network fee
+              About {{ setupCostText }} SOL — mostly the one-time cost of registering your
+              coin's name on-chain, plus the tiny network fee
             </dd>
           </div>
         </dl>

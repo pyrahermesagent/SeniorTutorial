@@ -47,22 +47,53 @@ export const MINT_ACCOUNT_SIZE = 82n
 
 /*
  * Rent-exempt reserves, pinned like utils/stake.ts and verified live via
- * getMinimumBalanceForRentExemption on both mainnet and devnet on
- * 2026-10-05 (82 → 1,066,800; 165 → 1,488,440; 679 → 4,099,560 lamports).
- * Rent parameters only ever go down; if they fall further, the mint
- * account simply holds a little extra, still closest to the owner.
+ * getMinimumBalanceForRentExemption on mainnet on 2026-10-05 at the
+ * 5,080 lamports/byte rent rate (82 → 1,066,800; 165 → 1,488,440;
+ * 607 → 3,733,800 lamports). Rent parameters only ever go down; if they
+ * fall further, the mint account simply holds a little extra, still
+ * closest to the owner.
  */
 export const MINT_ACCOUNT_RENT_LAMPORTS = 1_066_800n
 export const ATA_ACCOUNT_RENT_LAMPORTS = 1_488_440n
-export const METADATA_ACCOUNT_RENT_LAMPORTS = 4_099_560n // 679-byte metadata account
 
 /*
- * Rough total the whole creation costs the wallet: mint account + token
- * account + metadata account rents, plus two signatures (the wallet and
- * the fresh mint keypair). Shown to learners before they commit.
+ * Metadata account size as ACTUALLY allocated by the Token Metadata
+ * program for CreateMetadataAccountV3: 607 bytes. (The old MAX_METADATA_LEN
+ * reservation of 679 no longer applies.) The program puffs name/symbol/uri
+ * out to their maximum lengths (32/10/200) when writing the account, so
+ * the allocation is the same for every valid input — confirmed input-
+ * independent by simulating both minimal (11-char name) and maximal
+ * (32-char name, 10-char symbol) creations on mainnet 2026-10-05, per the
+ * serialized-layout formula: fixed header (65) + padded Data (431) +
+ * sale/mutable flags (2) + reserved space for all trailing optional
+ * fields (109) = 607.
+ */
+export const METADATA_ACCOUNT_SPACE = 607n
+export const METADATA_ACCOUNT_RENT_LAMPORTS = 3_733_800n // (128 + 607) × 5,080
+
+/*
+ * The Token Metadata program charges a 0.01 SOL creation fee on
+ * CreateMetadataAccountV3, debited from the payer and held inside the
+ * metadata account itself. Verified via mainnet simulateTransaction
+ * post-state on 2026-10-05: the created metadata account held
+ * 13,733,800 lamports = 3,733,800 rent + 10,000,000 fee. Missing this
+ * would understate the wallet's cost by more than half.
+ */
+export const METADATA_CREATION_FEE_LAMPORTS = 10_000_000n
+
+/*
+ * Total the whole creation debits from the wallet: mint account rent +
+ * token account rent + metadata account rent + the metadata creation
+ * fee, plus two signatures (the wallet and the fresh mint keypair).
+ * Equals 16,299,040 lamports (≈ 0.0163 SOL) at the 2026-10-05 rent rate.
+ * Shown to learners before they commit.
  */
 export const MEMECOIN_SETUP_LAMPORTS =
-  MINT_ACCOUNT_RENT_LAMPORTS + ATA_ACCOUNT_RENT_LAMPORTS + METADATA_ACCOUNT_RENT_LAMPORTS + 10_000n
+  MINT_ACCOUNT_RENT_LAMPORTS +
+  ATA_ACCOUNT_RENT_LAMPORTS +
+  METADATA_ACCOUNT_RENT_LAMPORTS +
+  METADATA_CREATION_FEE_LAMPORTS +
+  10_000n
 
 // On-chain Metaplex limits — the metadata program rejects anything longer.
 export const MAX_NAME_BYTES = 32
@@ -172,9 +203,12 @@ export function validateMemecoinForm({
     return { ok: false, reason: 'Please give your coin a name, like Grandma Coin.' }
   }
   if (byteLength(trimmedName) > MAX_NAME_BYTES) {
+    // The on-chain limit counts BYTES. Bytes ≥ characters always (plain
+    // letters are one byte each), so a byte cap also caps characters —
+    // the message leads with the unit seniors understand.
     return {
       ok: false,
-      reason: `That name is a little too long — please keep it to ${MAX_NAME_BYTES} characters.`,
+      reason: `That name is a little too long — please keep it to ${MAX_NAME_BYTES} characters. Accented characters and emoji count as more than one.`,
     }
   }
   const trimmedSymbol = symbol.trim()
@@ -184,7 +218,7 @@ export function validateMemecoinForm({
   if (byteLength(trimmedSymbol) > MAX_SYMBOL_BYTES) {
     return {
       ok: false,
-      reason: `That symbol is a little too long — please keep it to ${MAX_SYMBOL_BYTES} characters.`,
+      reason: `That symbol is a little too long — please keep it to ${MAX_SYMBOL_BYTES} characters. Accented characters and emoji count as more than one.`,
     }
   }
   if (!/^\d+$/.test(supply.trim())) {

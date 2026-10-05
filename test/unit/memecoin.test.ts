@@ -31,7 +31,12 @@ import {
   parseSetAuthorityInstruction,
 } from '@solana-program/token'
 import {
+  ATA_ACCOUNT_RENT_LAMPORTS,
   MAX_URI_LENGTH,
+  MEMECOIN_SETUP_LAMPORTS,
+  METADATA_ACCOUNT_RENT_LAMPORTS,
+  METADATA_ACCOUNT_SPACE,
+  METADATA_CREATION_FEE_LAMPORTS,
   METAPLEX_METADATA_PROGRAM_ADDRESS,
   MINT_ACCOUNT_RENT_LAMPORTS,
   MINT_ACCOUNT_SIZE,
@@ -118,6 +123,35 @@ async function build(revokeMintAuthority = true) {
     revokeMintAuthority,
   })
 }
+
+describe('cost constants (live-verified on mainnet 2026-10-05)', () => {
+  it('pins the Metaplex creation fee debited from the payer on CreateMetadataAccountV3', () => {
+    // simulateTransaction post-state: the created metadata account held
+    // its rent PLUS 10,000,000 lamports — the program's 0.01 SOL fee.
+    expect(METADATA_CREATION_FEE_LAMPORTS).toBe(10_000_000n)
+  })
+
+  it('pins the metadata account size the program actually allocates, and its rent', () => {
+    expect(METADATA_ACCOUNT_SPACE).toBe(607n)
+    // Rent = (128-byte account header + data) × 5,080 lamports/byte — the
+    // live rate verified via getMinimumBalanceForRentExemption the same day.
+    expect(METADATA_ACCOUNT_RENT_LAMPORTS).toBe(5_080n * (128n + METADATA_ACCOUNT_SPACE))
+  })
+
+  it('totals everything the wallet is debited across the whole creation', () => {
+    expect(MEMECOIN_SETUP_LAMPORTS).toBe(
+      MINT_ACCOUNT_RENT_LAMPORTS +
+        ATA_ACCOUNT_RENT_LAMPORTS +
+        METADATA_ACCOUNT_RENT_LAMPORTS +
+        METADATA_CREATION_FEE_LAMPORTS +
+        10_000n, // two signatures: wallet + fresh mint keypair
+    )
+    // The live-verified ~0.0163 SOL total; a future version must never
+    // again understate it (the original 0.0067 estimate lost the 0.01 fee).
+    expect(MEMECOIN_SETUP_LAMPORTS).toBe(16_299_040n)
+    expect(MEMECOIN_SETUP_LAMPORTS).toBeGreaterThanOrEqual(16_000_000n)
+  })
+})
 
 describe('buildMetadataJson', () => {
   it('produces Metaplex-standard JSON carrying name, symbol, description and image', () => {
